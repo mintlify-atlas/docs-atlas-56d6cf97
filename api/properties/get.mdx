@@ -636,4 +636,6 @@ const { data: property } = await response.json() as { data: Property };
   - `_count` - Counts of related records (versions and price history)
 - Only non-deleted properties can be retrieved (where `deletedAt` is null)
 - The `qualityScore` is automatically calculated based on data completeness and quality
-- Version history and price history can be accessed through separate endpoints (see `/api/properties/:id/versions` and `/api/properties/:id/price-history`)
+- Version history and price history can be accessed through separate endpoints:
+  - [GET /api/properties/:id/versions](/api/properties/versions)
+  - [GET /api/properties/:id/price-history](/api/properties/price-history)

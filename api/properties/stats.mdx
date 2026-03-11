@@ -1,0 +1,152 @@
+---
+title: "Get Property Statistics"
+description: "Retrieve aggregate statistics for the property portfolio"
+---
+
+## Endpoint
+
+```
+GET /api/properties/stats
+```
+
+Retrieve aggregate statistics and categorization data for the entire property portfolio.
+
+## Authentication
+
+Requires authentication with any user role (Viewer, Editor, or Admin).
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  Aggregate statistics object
+  
+  <Expandable title="properties">
+    <ResponseField name="total" type="number">
+      Total number of active properties
+    </ResponseField>
+    
+    <ResponseField name="byStatus" type="object">
+      Property counts grouped by status (AVAILABLE, SOLD, RENTED, etc.)
+    </ResponseField>
+    
+    <ResponseField name="byCategory" type="object">
+      Property counts grouped by category (RESIDENTIAL, COMMERCIAL, LAND, etc.)
+    </ResponseField>
+    
+    <ResponseField name="byListingType" type="object">
+      Property counts grouped by listing type (SALE, RENT, LEASE, SHORTLET)
+    </ResponseField>
+    
+    <ResponseField name="byState" type="object">
+      Property counts grouped by state/region
+    </ResponseField>
+    
+    <ResponseField name="averagePrice" type="number">
+      Average property price across all listings
+    </ResponseField>
+    
+    <ResponseField name="medianPrice" type="number">
+      Median property price
+    </ResponseField>
+    
+    <ResponseField name="totalValue" type="number">
+      Total value of all properties combined
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://realtors-practice-new-api.onrender.com/api/properties/stats" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties/stats',
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  }
+);
+
+const { data } = await response.json();
+console.log('Portfolio Stats:', data);
+```
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "total": 1247,
+    "byStatus": {
+      "AVAILABLE": 892,
+      "SOLD": 203,
+      "RENTED": 98,
+      "UNDER_OFFER": 42,
+      "WITHDRAWN": 12
+    },
+    "byCategory": {
+      "RESIDENTIAL": 879,
+      "COMMERCIAL": 215,
+      "LAND": 98,
+      "SHORTLET": 45,
+      "INDUSTRIAL": 10
+    },
+    "byListingType": {
+      "SALE": 734,
+      "RENT": 389,
+      "LEASE": 89,
+      "SHORTLET": 35
+    },
+    "byState": {
+      "Lagos": 892,
+      "Abuja": 234,
+      "Rivers": 67,
+      "Ogun": 54
+    },
+    "averagePrice": 45600000,
+    "medianPrice": 28000000,
+    "totalValue": 56889200000
+  }
+}
+```
+
+## Use Cases
+
+- **Dashboard Analytics**: Display key metrics on admin dashboards
+- **Market Reports**: Generate market overview reports
+- **Portfolio Insights**: Track portfolio composition and distribution
+- **Data Visualization**: Power charts and graphs showing property distribution
+
+## Notes
+
+- Statistics are calculated in real-time from the active property database
+- Only non-deleted properties (where `deletedAt` is null) are included
+- Price calculations exclude properties without a price value
+- Results may be cached for performance (typically 5-10 minutes)
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="List Properties" icon="list" href="/api/properties/list">
+    Browse all properties with filtering
+  </Card>
+  <Card title="Analytics KPIs" icon="chart-line" href="/api/user/analytics">
+    Get dashboard KPIs and charts
+  </Card>
+</CardGroup>

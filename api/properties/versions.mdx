@@ -1,0 +1,228 @@
+---
+title: "Get Property Version History"
+description: "Retrieve the complete change history for a property"
+---
+
+## Endpoint
+
+```
+GET /api/properties/:id/versions
+```
+
+Retrieve the complete version history for a specific property, showing all changes made over time with diffs and metadata.
+
+## Authentication
+
+Requires authentication with any user role (Viewer, Editor, or Admin).
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier (CUID) of the property
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of versions per page (max: 100)
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  Paginated version history
+  
+  <Expandable title="properties">
+    <ResponseField name="items" type="PropertyVersion[]">
+      Array of version records
+      
+      <Expandable title="PropertyVersion fields">
+        <ResponseField name="id" type="string">
+          Version record ID
+        </ResponseField>
+        
+        <ResponseField name="version" type="number">
+          Version number (incremental)
+        </ResponseField>
+        
+        <ResponseField name="changeSource" type="string">
+          Source of the change: SCRAPER, MANUAL_EDIT, ENRICHMENT, or SYSTEM
+        </ResponseField>
+        
+        <ResponseField name="changedBy" type="string" nullable>
+          User ID who made the change (null for automated changes)
+        </ResponseField>
+        
+        <ResponseField name="changeSummary" type="string" nullable>
+          Human-readable summary of changes
+        </ResponseField>
+        
+        <ResponseField name="previousData" type="object">
+          Snapshot of data before the change
+        </ResponseField>
+        
+        <ResponseField name="newData" type="object">
+          Snapshot of data after the change
+        </ResponseField>
+        
+        <ResponseField name="changedFields" type="string[]">
+          List of field names that were modified
+        </ResponseField>
+        
+        <ResponseField name="createdAt" type="string">
+          ISO timestamp when the version was created
+        </ResponseField>
+        
+        <ResponseField name="editor" type="object" nullable>
+          User object for manual edits (firstName, lastName, email)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="pagination" type="object">
+      Pagination metadata
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://realtors-practice-new-api.onrender.com/api/properties/clx123abc/versions?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```javascript JavaScript
+const propertyId = 'clx123abc';
+
+const response = await fetch(
+  `https://realtors-practice-new-api.onrender.com/api/properties/${propertyId}/versions?page=1&limit=10`,
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  }
+);
+
+const { data } = await response.json();
+console.log('Version History:', data.items);
+```
+</CodeGroup>
+
+## Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "clx789def",
+        "version": 3,
+        "changeSource": "MANUAL_EDIT",
+        "changedBy": "clx456user",
+        "changeSummary": "Updated price and description",
+        "previousData": {
+          "price": 45000000,
+          "description": "Beautiful 4-bedroom duplex..."
+        },
+        "newData": {
+          "price": 42000000,
+          "description": "Newly renovated 4-bedroom duplex..."
+        },
+        "changedFields": ["price", "description"],
+        "createdAt": "2024-03-10T14:23:00Z",
+        "editor": {
+          "firstName": "John",
+          "lastName": "Doe",
+          "email": "john@example.com"
+        }
+      },
+      {
+        "id": "clx789ghi",
+        "version": 2,
+        "changeSource": "ENRICHMENT",
+        "changedBy": null,
+        "changeSummary": "Enriched with coordinates",
+        "previousData": {
+          "latitude": null,
+          "longitude": null
+        },
+        "newData": {
+          "latitude": 6.4541,
+          "longitude": 3.3947
+        },
+        "changedFields": ["latitude", "longitude"],
+        "createdAt": "2024-03-09T10:15:00Z",
+        "editor": null
+      },
+      {
+        "id": "clx789jkl",
+        "version": 1,
+        "changeSource": "SCRAPER",
+        "changedBy": null,
+        "changeSummary": "Initial property creation",
+        "previousData": {},
+        "newData": {
+          "title": "4 Bedroom Duplex in Lekki",
+          "price": 45000000,
+          "listingType": "SALE"
+        },
+        "changedFields": [],
+        "createdAt": "2024-03-08T08:30:00Z",
+        "editor": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 3,
+      "totalPages": 1,
+      "hasMore": false
+    }
+  }
+}
+```
+
+## Use Cases
+
+- **Audit Trail**: Track all changes made to a property over time
+- **Price Tracking**: See historical price changes
+- **Data Quality**: Identify when enrichment or corrections were applied
+- **User Activity**: Monitor manual edits by team members
+- **Diff Viewer**: Build UI to show before/after comparisons
+
+## Notes
+
+- Version 1 always represents the initial property creation
+- `previousData` and `newData` contain only the changed fields, not the full property object
+- For version 1, `previousData` is an empty object
+- Automated changes (SCRAPER, ENRICHMENT, SYSTEM) have `changedBy` set to null
+- Versions are returned in descending order (newest first)
+
+## Related Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Get Property" icon="house" href="/api/properties/get">
+    Get the current property data
+  </Card>
+  <Card title="Price History" icon="chart-line" href="/api/properties/price-history">
+    Get simplified price change history
+  </Card>
+  <Card title="Update Property" icon="pen" href="/api/properties/update">
+    Make changes to a property (creates new version)
+  </Card>
+</CardGroup>

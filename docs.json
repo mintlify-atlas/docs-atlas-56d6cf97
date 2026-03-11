@@ -83,6 +83,9 @@
             "pages": [
               "api/properties/list",
               "api/properties/get",
+              "api/properties/stats",
+              "api/properties/versions",
+              "api/properties/price-history",
               "api/properties/create",
               "api/properties/update",
               "api/properties/delete"
