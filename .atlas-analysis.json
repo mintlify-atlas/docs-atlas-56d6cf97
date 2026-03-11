@@ -1,0 +1,134 @@
+{
+  "projectType": "saas",
+  "projectName": "Realtors' Practice",
+  "projectDescription": "AI-powered Nigerian property intelligence platform with web scraping, search, and real-time listing management",
+  "theme": "palm",
+  "primaryColor": "#040404",
+  "lightColor": "#0404fc",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "architecture"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/property-search",
+              "features/scraping-system",
+              "features/ai-intelligence",
+              "features/mapping"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/authentication",
+              "guides/search-filters",
+              "guides/saved-searches",
+              "guides/scraping-jobs",
+              "guides/data-explorer",
+              "guides/notifications"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/frontend",
+              "development/backend",
+              "development/scraper",
+              "development/database"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Properties",
+            "pages": [
+              "api/properties/list",
+              "api/properties/get",
+              "api/properties/create",
+              "api/properties/update",
+              "api/properties/delete"
+            ]
+          },
+          {
+            "group": "Search",
+            "pages": [
+              "api/search/query",
+              "api/search/saved-searches",
+              "api/search/geo"
+            ]
+          },
+          {
+            "group": "Scraping",
+            "pages": [
+              "api/scraping/jobs",
+              "api/scraping/sites",
+              "api/scraping/logs"
+            ]
+          },
+          {
+            "group": "User",
+            "pages": [
+              "api/user/profile",
+              "api/user/notifications",
+              "api/user/analytics"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI-powered property search with natural language queries",
+    "Automated web scraping across Nigerian real estate sites",
+    "Interactive map visualization with property clustering",
+    "Real-time notifications for saved searches and price changes",
+    "Comprehensive property database with 85+ data fields",
+    "Version tracking and audit logs for all property changes",
+    "Role-based access control (Admin, Editor, Viewer)",
+    "Advanced filters (location, price, bedrooms, property type)",
+    "Meilisearch-powered full-text search with facets",
+    "Real-time scraping progress via WebSocket"
+  ],
+  "publicApiSurface": [
+    "GET /api/properties",
+    "GET /api/properties/:id",
+    "POST /api/properties",
+    "PATCH /api/properties/:id",
+    "DELETE /api/properties/:id",
+    "POST /api/search",
+    "GET /api/search/geo",
+    "POST /api/saved-searches",
+    "GET /api/saved-searches",
+    "POST /api/scrape/jobs",
+    "GET /api/scrape/jobs/:id",
+    "GET /api/scrape/sites",
+    "POST /api/scrape/sites",
+    "GET /api/user/profile",
+    "GET /api/user/notifications",
+    "GET /api/analytics/overview",
+    "POST /api/auth/login",
+    "POST /api/auth/register"
+  ]
+}
