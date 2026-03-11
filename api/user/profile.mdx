@@ -1,0 +1,325 @@
+---
+title: "User Profile"
+description: "Manage user profile and account settings"
+---
+
+## Get Current User Profile
+
+<CodeGroup>
+```bash cURL
+curl https://api.realtorspractice.com/api/users/me \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.realtorspractice.com/api/users/me', {
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN'
+  }
+});
+const data = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates if the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  User profile object
+  
+  <ResponseField name="id" type="string" required>
+    Unique user identifier (CUID)
+  </ResponseField>
+  
+  <ResponseField name="email" type="string" required>
+    User's email address
+  </ResponseField>
+  
+  <ResponseField name="firstName" type="string">
+    User's first name
+  </ResponseField>
+  
+  <ResponseField name="lastName" type="string">
+    User's last name
+  </ResponseField>
+  
+  <ResponseField name="role" type="enum" required>
+    User role. One of: `ADMIN`, `PENDING_ADMIN`, `EDITOR`, `VIEWER`, `API_USER`
+  </ResponseField>
+  
+  <ResponseField name="isActive" type="boolean" required>
+    Whether the user account is active
+  </ResponseField>
+  
+  <ResponseField name="avatarUrl" type="string">
+    URL to user's avatar image
+  </ResponseField>
+  
+  <ResponseField name="phone" type="string">
+    User's phone number
+  </ResponseField>
+  
+  <ResponseField name="bio" type="string">
+    User biography or description
+  </ResponseField>
+  
+  <ResponseField name="company" type="string">
+    User's company or organization
+  </ResponseField>
+  
+  <ResponseField name="lastLoginAt" type="string">
+    ISO 8601 timestamp of last login
+  </ResponseField>
+  
+  <ResponseField name="loginCount" type="number" required>
+    Total number of logins
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string" required>
+    ISO 8601 timestamp of account creation
+  </ResponseField>
+  
+  <ResponseField name="updatedAt" type="string" required>
+    ISO 8601 timestamp of last profile update
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "cm4xk9j2l0000qwerty123456",
+    "email": "jane.doe@example.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "role": "EDITOR",
+    "isActive": true,
+    "avatarUrl": "https://cdn.example.com/avatars/jane.jpg",
+    "phone": "+234 803 123 4567",
+    "bio": "Real estate analyst with 5+ years experience in Nigerian property market",
+    "company": "Lagos Property Solutions",
+    "lastLoginAt": "2026-03-11T09:30:00.000Z",
+    "loginCount": 47,
+    "createdAt": "2025-12-15T08:22:00.000Z",
+    "updatedAt": "2026-03-10T14:15:00.000Z"
+  },
+  "message": "Profile retrieved successfully"
+}
+```
+
+---
+
+## Update Profile
+
+<Note>
+  Users can only update their own profile. The `role` field can only be updated by admins via `/api/users/:id/role`.
+</Note>
+
+```http
+PATCH /api/users/me
+```
+
+### Request Body
+
+<ParamField body="firstName" type="string">
+  First name
+</ParamField>
+
+<ParamField body="lastName" type="string">
+  Last name
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Phone number
+</ParamField>
+
+<ParamField body="bio" type="string">
+  User biography or description
+</ParamField>
+
+<ParamField body="company" type="string">
+  Company or organization name
+</ParamField>
+
+<ParamField body="avatarUrl" type="string">
+  URL to avatar image
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH https://api.realtorspractice.com/api/users/me \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "phone": "+234 803 123 4567",
+    "bio": "Real estate analyst with 5+ years experience",
+    "company": "Lagos Property Solutions"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.realtorspractice.com/api/users/me', {
+  method: 'PATCH',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    firstName: 'Jane',
+    lastName: 'Doe',
+    phone: '+234 803 123 4567',
+    bio: 'Real estate analyst with 5+ years experience',
+    company: 'Lagos Property Solutions'
+  })
+});
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    'https://api.realtorspractice.com/api/users/me',
+    headers={
+        'Authorization': 'Bearer YOUR_TOKEN',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'firstName': 'Jane',
+        'lastName': 'Doe',
+        'phone': '+234 803 123 4567',
+        'bio': 'Real estate analyst with 5+ years experience',
+        'company': 'Lagos Property Solutions'
+    }
+)
+data = response.json()
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates if the update was successful
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  Updated user profile (partial object)
+  
+  <ResponseField name="id" type="string" required>
+    User ID
+  </ResponseField>
+  
+  <ResponseField name="email" type="string" required>
+    Email address
+  </ResponseField>
+  
+  <ResponseField name="firstName" type="string">
+    First name
+  </ResponseField>
+  
+  <ResponseField name="lastName" type="string">
+    Last name
+  </ResponseField>
+  
+  <ResponseField name="role" type="enum" required>
+    User role
+  </ResponseField>
+  
+  <ResponseField name="avatarUrl" type="string">
+    Avatar URL
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "cm4xk9j2l0000qwerty123456",
+    "email": "jane.doe@example.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "role": "EDITOR",
+    "avatarUrl": "https://cdn.example.com/avatars/jane.jpg"
+  },
+  "message": "Profile updated successfully"
+}
+```
+
+---
+
+## User Roles
+
+The platform supports five user roles with different permission levels:
+
+<ParamField body="ADMIN" type="string">
+  **Full access**: Can manage users, configure sites, trigger scrapes, edit properties, and access all features
+</ParamField>
+
+<ParamField body="PENDING_ADMIN" type="string">
+  **Awaiting approval**: User registered as admin but requires approval from existing admin. Limited access until approved.
+</ParamField>
+
+<ParamField body="EDITOR" type="string">
+  **Edit access**: Can view and edit properties, manage saved searches, but cannot manage users or sites
+</ParamField>
+
+<ParamField body="VIEWER" type="string">
+  **Read-only access**: Can view properties and use search features, but cannot edit or manage data
+</ParamField>
+
+<ParamField body="API_USER" type="string">
+  **API access**: Programmatic access to read property data via API. Cannot use web interface.
+</ParamField>
+
+---
+
+## Error Responses
+
+### 401 Unauthorized
+
+```json
+{
+  "success": false,
+  "error": "No token provided or invalid token",
+  "message": "Unauthorized"
+}
+```
+
+### 400 Bad Request
+
+```json
+{
+  "success": false,
+  "error": "Validation failed: phone must be a valid string",
+  "message": "Invalid input"
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "success": false,
+  "error": "Database connection failed",
+  "message": "Failed to update profile"
+}
+```

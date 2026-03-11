@@ -1,0 +1,141 @@
+---
+title: "Introduction"
+description: "AI-powered Nigerian property intelligence platform with web scraping, search, and real-time listing management"
+---
+
+## Welcome to Realtors' Practice
+
+Realtors' Practice is a modern, luxury real estate platform designed for the Nigerian market. It combines AI-powered search, automated web scraping, dynamic mapping, and intelligent data enrichment to deliver comprehensive property intelligence.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get started with Realtors' Practice in minutes
+  </Card>
+  <Card
+    title="Architecture"
+    icon="sitemap"
+    href="/architecture"
+  >
+    Understand the platform architecture
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/overview"
+  >
+    Explore the complete API documentation
+  </Card>
+  <Card
+    title="Development Setup"
+    icon="terminal"
+    href="/development/setup"
+  >
+    Set up your local development environment
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card
+    title="AI-Powered Search"
+    icon="brain"
+    href="/features/ai-intelligence"
+  >
+    Natural language property search with intelligent query understanding
+  </Card>
+  <Card
+    title="Automated Scraping"
+    icon="spider"
+    href="/features/scraping-system"
+  >
+    Multi-site web scraping with adaptive extraction and validation
+  </Card>
+  <Card
+    title="Interactive Maps"
+    icon="map"
+    href="/features/mapping"
+  >
+    Dynamic property visualization with clustering and geospatial search
+  </Card>
+  <Card
+    title="Real-Time Notifications"
+    icon="bell"
+    href="/guides/notifications"
+  >
+    Live updates for saved searches and price changes via WebSocket
+  </Card>
+</CardGroup>
+
+## Platform Highlights
+
+<AccordionGroup>
+  <Accordion title="Comprehensive Property Database" icon="database">
+    Store and manage properties with **85+ data fields** across 9 categories:
+    - Basic information (title, source, status, category)
+    - Property details (bedrooms, bathrooms, size, condition)
+    - Financial data (price, fees, payment plans)
+    - Location (address, coordinates, landmarks)
+    - Amenities and features
+    - Media (images, videos, virtual tours)
+    - Agent information
+    - Quality scores and metadata
+    - Promotional tags
+  </Accordion>
+
+  <Accordion title="Advanced Search & Filtering" icon="filter">
+    - **Meilisearch** integration for fast full-text search
+    - Advanced filters: location, price range, bedrooms, property type
+    - Geospatial bounding-box queries
+    - Saved searches with automatic monitoring
+    - Natural language query support
+  </Accordion>
+
+  <Accordion title="Version Tracking & Audit" icon="clock-rotate-left">
+    - Full property version history with change diffs
+    - Audit logs for all user actions
+    - Price history tracking
+    - Multiple change sources (scraper, manual, enrichment, system)
+  </Accordion>
+
+  <Accordion title="Role-Based Access Control" icon="users">
+    - **Admin**: Full platform control and user management
+    - **Editor**: Create and modify properties
+    - **Viewer**: Read-only access to listings
+    - **API User**: Programmatic access via API keys
+  </Accordion>
+</AccordionGroup>
+
+## Tech Stack
+
+The platform is built as a microservice architecture:
+
+- **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS v4, shadcn/ui
+- **Backend**: Node.js, Express, TypeScript, Prisma ORM, Socket.io
+- **Scraper**: Python 3.11, Playwright, BeautifulSoup, Flask
+- **Database**: CockroachDB (PostgreSQL-compatible)
+- **Search**: Meilisearch (self-hosted)
+- **Auth**: Supabase (JWT authentication)
+- **Deployment**: Vercel (frontend), Render (backend + scraper)
+
+<Note>
+  Realtors' Practice is designed for the Nigerian real estate market with support for local property types, pricing in NGN, and region-specific data fields.
+</Note>
+
+## Next Steps
+
+<Steps>
+  <Step title="Read the Quickstart">
+    Follow the [quickstart guide](/quickstart) to set up your account and explore the platform.
+  </Step>
+  <Step title="Explore Core Features">
+    Learn about [property search](/features/property-search), [scraping](/features/scraping-system), and [mapping](/features/mapping).
+  </Step>
+  <Step title="Set Up Development">
+    If you're contributing, check out the [development setup](/development/setup) guide.
+  </Step>
+</Steps>

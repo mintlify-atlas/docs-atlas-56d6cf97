@@ -1,0 +1,607 @@
+---
+title: Data Explorer
+description: Analyze property market trends, visualize statistics, and gain insights from Nigeria's real estate data
+---
+
+## Overview
+
+The Data Explorer provides powerful analytics and visualization tools to understand the Nigerian property market. Analyze pricing trends, inventory distribution, market activity, and more using data from thousands of scraped listings.
+
+<Note>
+  The Data Explorer is available to all user roles. Admins and Editors can access all features, while Viewers have read-only access to visualizations.
+</Note>
+
+## Key Features
+
+<CardGroup cols={3}>
+  <Card title="Market Trends" icon="chart-line">
+    Track price movements, inventory changes, and market velocity over time
+  </Card>
+  <Card title="Geographic Analysis" icon="map">
+    Visualize property distribution, hotspots, and regional pricing patterns
+  </Card>
+  <Card title="Property Insights" icon="building">
+    Analyze property types, features, and characteristics across listings
+  </Card>
+  <Card title="Price Intelligence" icon="naira-sign">
+    Compare prices by location, property type, and bedrooms
+  </Card>
+  <Card title="Quality Metrics" icon="star">
+    Review data quality scores and listing completeness
+  </Card>
+  <Card title="Agent Analysis" icon="user-tie">
+    Identify top agents, agencies, and market activity patterns
+  </Card>
+</CardGroup>
+
+## Market Overview Dashboard
+
+The main dashboard provides at-a-glance statistics about the entire property database.
+
+### Key Metrics
+
+<AccordionGroup>
+  <Accordion title="Total Properties" icon="database">
+    Total count of active properties in the database, segmented by:
+    - Listing type (SALE, RENT, LEASE, SHORTLET)
+    - Category (RESIDENTIAL, COMMERCIAL, LAND, INDUSTRIAL)
+    - Status (AVAILABLE, SOLD, RENTED, UNDER_OFFER)
+    
+    Updated in real-time as scraping jobs complete.
+  </Accordion>
+  
+  <Accordion title="Average Prices" icon="calculator">
+    Mean and median prices by:
+    - Listing type
+    - State and area
+    - Property type (Flat, Detached, Terrace, etc.)
+    - Bedroom count
+    
+    Use this to identify under/overpriced listings.
+  </Accordion>
+  
+  <Accordion title="Market Activity" icon="chart-area">
+    Track listing velocity:
+    - New listings per day/week/month
+    - Properties marked SOLD or RENTED
+    - Days on market (average)
+    - Inquiry and favorite counts
+  </Accordion>
+  
+  <Accordion title="Quality Scores" icon="certificate">
+    Distribution of data quality across listings:
+    - Percentage with complete information
+    - Average quality score (0-100)
+    - Missing fields analysis
+    - Verification status breakdown
+  </Accordion>
+</AccordionGroup>
+
+## Price Analysis
+
+Deep dive into pricing data to understand market rates and identify opportunities.
+
+### Price Distribution
+
+Visualize how properties are priced across different segments:
+
+<Steps>
+  <Step title="Select filters">
+    Choose:
+    - Location (state, area)
+    - Property category and type
+    - Bedroom count
+    - Listing type (sale vs. rent)
+  </Step>
+  
+  <Step title="View histogram">
+    See the distribution of prices in your selected segment. Identify:
+    - Price clusters (most common price ranges)
+    - Outliers (unusually high/low prices)
+    - Market gaps (price ranges with few listings)
+  </Step>
+  
+  <Step title="Calculate statistics">
+    Review:
+    - Mean, median, mode prices
+    - Standard deviation
+    - Min/max values
+    - Quartiles and percentiles
+  </Step>
+</Steps>
+
+### Price Per SQM Analysis
+
+Compare value across properties of different sizes:
+
+```json Example Data
+{
+  "area": "Lekki Phase 1",
+  "propertyType": "Flat",
+  "bedrooms": 3,
+  "statistics": {
+    "avgPricePerSqm": 485000,
+    "medianPricePerSqm": 468000,
+    "minPricePerSqm": 320000,
+    "maxPricePerSqm": 780000,
+    "sampleSize": 47
+  }
+}
+```
+
+<Tip>
+  Properties with significantly lower price-per-sqm than the area median may represent good value opportunities.
+</Tip>
+
+### Price History
+
+Track how individual property prices change over time:
+
+- View price trends for specific listings
+- Identify price drops (potential deals)
+- Detect stale listings (no price changes for months)
+- Monitor market cooling/heating signals
+
+## Geographic Insights
+
+Understand where properties are located and how geography affects pricing.
+
+### Property Distribution Map
+
+<Steps>
+  <Step title="View the interactive map">
+    Properties are displayed as markers clustered by location.
+  </Step>
+  
+  <Step title="Apply filters">
+    Filter by price range, property type, or any search criteria.
+  </Step>
+  
+  <Step title="Identify hotspots">
+    Cluster size indicates listing density. Larger clusters = more properties in that area.
+  </Step>
+  
+  <Step title="Click for details">
+    Select individual properties to view full listing information.
+  </Step>
+</Steps>
+
+### Area Comparison
+
+Compare different neighborhoods side-by-side:
+
+| Area | Avg Price (3BR) | Listings | Avg Quality Score | Avg Days on Market |
+|------|----------------|----------|-------------------|--------------------|
+| Lekki Phase 1 | ₦85M | 247 | 88.2 | 45 |
+| Ikoyi | ₦125M | 156 | 92.5 | 62 |
+| Victoria Island | ₦135M | 189 | 91.8 | 58 |
+| Ikeja GRA | ₦68M | 312 | 85.7 | 38 |
+
+### State-Level Analytics
+
+View market activity by Nigerian state:
+
+- **Lagos**: Dominates with 75% of all listings
+- **Abuja**: 15% of listings, higher average prices
+- **Rivers (Port Harcourt)**: 5% of listings
+- **Other states**: Emerging markets with limited data
+
+## Property Type Analysis
+
+Understand inventory composition and preferences.
+
+### Category Distribution
+
+```json Example Data
+{
+  "RESIDENTIAL": {
+    "count": 8945,
+    "percentage": 72.3,
+    "avgPrice": 78500000
+  },
+  "COMMERCIAL": {
+    "count": 2134,
+    "percentage": 17.2,
+    "avgPrice": 245000000
+  },
+  "LAND": {
+    "count": 987,
+    "percentage": 8.0,
+    "avgPrice": 125000000
+  },
+  "SHORTLET": {
+    "count": 312,
+    "percentage": 2.5,
+    "avgPrice": 85000
+  }
+}
+```
+
+### Property Subtype Breakdown
+
+For residential properties:
+
+<CardGroup cols={2}>
+  <Card title="Flats" icon="building">
+    45% of residential inventory
+    
+    Average: ₦65M (sale), ₦2.5M/year (rent)
+  </Card>
+  <Card title="Detached Duplexes" icon="house">
+    28% of residential inventory
+    
+    Average: ₦125M (sale), ₦4.8M/year (rent)
+  </Card>
+  <Card title="Terraces" icon="house-chimney">
+    18% of residential inventory
+    
+    Average: ₦85M (sale), ₦3.2M/year (rent)
+  </Card>
+  <Card title="Semi-Detached" icon="house-user">
+    9% of residential inventory
+    
+    Average: ₦95M (sale), ₦3.8M/year (rent)
+  </Card>
+</CardGroup>
+
+### Bedroom Distribution
+
+Most common configurations:
+
+1. **3 Bedrooms**: 42% of listings (most popular)
+2. **4 Bedrooms**: 28% of listings
+3. **2 Bedrooms**: 15% of listings
+4. **5+ Bedrooms**: 10% of listings
+5. **1 Bedroom**: 5% of listings
+
+<Note>
+  3-bedroom properties have the highest liquidity and broadest market appeal in Nigeria.
+</Note>
+
+## Feature Analysis
+
+Identify which amenities and features are most common and valuable.
+
+### Top Features
+
+<AccordionGroup>
+  <Accordion title="Security Features" icon="shield">
+    Most common:
+    - 24/7 Security (68% of listings)
+    - Gated Estate (52%)
+    - CCTV (45%)
+    - Security Door (38%)
+    
+    Premium listings (90th percentile price) have security features 95% of the time.
+  </Accordion>
+  
+  <Accordion title="Utilities" icon="plug">
+    Standard expectations:
+    - Backup Generator (72%)
+    - Water Treatment (58%)
+    - Solar Panels (12%, growing rapidly)
+    - Prepaid Meter (45%)
+  </Accordion>
+  
+  <Accordion title="Amenities" icon="sparkles">
+    Luxury indicators:
+    - Swimming Pool (15% of premium properties)
+    - Gym/Fitness Center (22%)
+    - Elevator (8%)
+    - Smart Home Features (5%)
+    
+    Properties with pools command 25% premium on average.
+  </Accordion>
+  
+  <Accordion title="Parking" icon="car">
+    Parking availability:
+    - Average spaces: 2.3 per property
+    - 85% have at least 1 parking space
+    - Commercial properties average 5+ spaces
+  </Accordion>
+</AccordionGroup>
+
+### Feature Price Correlation
+
+Which features add the most value?
+
+| Feature | Avg Price Premium | Prevalence |
+|---------|------------------|------------|
+| Swimming Pool | +25% | 15% |
+| Smart Home | +18% | 5% |
+| Gym | +15% | 22% |
+| Elevator | +12% | 8% |
+| BQ (Boys' Quarters) | +10% | 35% |
+| Generator | +5% | 72% |
+
+## Data Quality Analysis
+
+Assess the completeness and reliability of property data.
+
+### Quality Score Distribution
+
+Properties are scored 0-100 based on:
+- **Field completeness** (40%): How many fields have data
+- **Data accuracy** (30%): Validated information (geocoded location, parsed price)
+- **Media richness** (20%): Number and quality of images
+- **Freshness** (10%): How recently the listing was scraped
+
+```json Example Distribution
+{
+  "excellent": {"range": "90-100", "count": 2341, "percentage": 18.9},
+  "good": {"range": "75-89", "count": 5623, "percentage": 45.4},
+  "fair": {"range": "60-74", "count": 3156, "percentage": 25.5},
+  "poor": {"range": "0-59", "count": 1256, "percentage": 10.2}
+}
+```
+
+### Missing Data Analysis
+
+Identify common gaps in property information:
+
+<Steps>
+  <Step title="Field completion rates">
+    - Title: 100%
+    - Price: 98%
+    - Location: 95%
+    - Bedrooms: 92%
+    - Images: 88%
+    - Land size: 45%
+    - Year built: 22%
+  </Step>
+  
+  <Step title="Prioritize improvements">
+    Focus scraping enhancements on high-value fields with low completion rates.
+  </Step>
+</Steps>
+
+<Warning>
+  Properties with quality scores below 60 should be manually verified before making investment decisions.
+</Warning>
+
+## Agent & Agency Insights
+
+Understand who's listing properties and market share.
+
+### Top Agents by Volume
+
+```json Example Data
+[
+  {
+    "agentName": "Property Pro Realty",
+    "listingCount": 347,
+    "avgPrice": 82500000,
+    "avgQualityScore": 89.2,
+    "verifiedPercentage": 78
+  },
+  {
+    "agentName": "Lagos Property Hub",
+    "listingCount": 298,
+    "avgPrice": 95000000,
+    "avgQualityScore": 91.5,
+    "verifiedPercentage": 85
+  }
+]
+```
+
+### Agency Performance
+
+Compare agencies by:
+- **Listing volume**: Total active properties
+- **Market coverage**: Geographic distribution
+- **Specialization**: Property types and categories
+- **Data quality**: Average quality scores
+- **Verification rate**: Percentage of verified agents
+
+## Time-Series Analysis
+
+Track how the market evolves over time.
+
+### New Listings Over Time
+
+Visualize market activity:
+
+```
+Jan 2026: 1,247 new listings
+Feb 2026: 1,389 new listings (+11%)
+Mar 2026: 1,156 new listings (-17%)
+```
+
+### Price Trends
+
+Monitor average price movements:
+
+- **3BR Flat in Lekki**:
+  - Q4 2025: ₦78M
+  - Q1 2026: ₦82M (+5%)
+  - Q2 2026: ₦85M (+4%)
+
+<Tip>
+  Quarter-over-quarter price increases above 10% may indicate a heating market or inflation impact.
+</Tip>
+
+### Days on Market
+
+Track how quickly properties are selling/renting:
+
+```json
+{
+  "currentQuarter": {
+    "avgDaysOnMarket": 45,
+    "medianDaysOnMarket": 38
+  },
+  "previousQuarter": {
+    "avgDaysOnMarket": 52,
+    "medianDaysOnMarket": 44
+  },
+  "trend": "Improving (faster sales)"
+}
+```
+
+## Custom Reports
+
+Create tailored analytics for specific needs.
+
+<Steps>
+  <Step title="Define parameters">
+    Set:
+    - Geographic scope (state, areas)
+    - Property filters (type, bedrooms, price range)
+    - Time period
+    - Metrics to include
+  </Step>
+  
+  <Step title="Generate report">
+    System compiles data and generates visualizations.
+  </Step>
+  
+  <Step title="Export results">
+    Download as:
+    - PDF (formatted report with charts)
+    - Excel (raw data for further analysis)
+    - CSV (for import into other tools)
+  </Step>
+  
+  <Step title="Schedule recurring reports">
+    Set up weekly or monthly automated reports delivered via email.
+  </Step>
+</Steps>
+
+## Export & API Access
+
+Access analytics data programmatically for custom analysis.
+
+### Export Data
+
+Export filtered property datasets:
+
+<CodeGroup>
+```bash CSV Export
+curl -X GET "https://api.realtorspractice.com/api/properties/export" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --data-urlencode "format=csv" \
+  --data-urlencode "filters=state=Lagos AND bedrooms=3" \
+  -o properties.csv
+```
+
+```bash JSON Export
+curl -X GET "https://api.realtorspractice.com/api/properties/export" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --data-urlencode "format=json" \
+  --data-urlencode "filters=category=RESIDENTIAL" \
+  -o properties.json
+```
+</CodeGroup>
+
+### Analytics Endpoints
+
+Query aggregated statistics via API:
+
+```bash Price Statistics
+curl -X GET "https://api.realtorspractice.com/api/analytics/price-stats" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --data-urlencode "area=Lekki Phase 1" \
+  --data-urlencode "bedrooms=3"
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Monitoring" icon="calendar-check">
+    Check key metrics weekly to spot market shifts early.
+  </Card>
+  <Card title="Comparative Analysis" icon="scale-balanced">
+    Always compare multiple areas or time periods for context.
+  </Card>
+  <Card title="Quality Filtering" icon="filter">
+    Focus on high-quality listings (score > 75) for accurate analysis.
+  </Card>
+  <Card title="Verify Outliers" icon="magnifying-glass-chart">
+    Investigate unusual data points - they may be errors or rare opportunities.
+  </Card>
+  <Card title="Combine Metrics" icon="layer-group">
+    Look at price, volume, and days-on-market together for complete picture.
+  </Card>
+  <Card title="Export for Deep Dives" icon="download">
+    Use Excel/Python for complex statistical analysis beyond the UI.
+  </Card>
+</CardGroup>
+
+## Common Analysis Scenarios
+
+<AccordionGroup>
+  <Accordion title="Investment Area Selection">
+    Compare areas by:
+    1. Average price per sqm (affordability)
+    2. Days on market (liquidity)
+    3. Listing volume growth (demand)
+    4. Rental yield (for buy-to-let)
+    
+    Look for areas with improving metrics but still below premium pricing.
+  </Accordion>
+  
+  <Accordion title="Portfolio Valuation">
+    Use similar property pricing to:
+    1. Filter by exact property characteristics
+    2. Calculate price per sqm for comparables
+    3. Adjust for quality score differences
+    4. Account for location premiums
+    
+    Average 3-5 comparables for reliable valuation.
+  </Accordion>
+  
+  <Accordion title="Market Timing">
+    Analyze:
+    1. New listing velocity (supply)
+    2. Days on market trend (demand)
+    3. Price trajectory (direction)
+    4. Seasonal patterns (timing)
+    
+    Rising prices + falling DOM + increasing supply = hot market.
+  </Accordion>
+  
+  <Accordion title="Feature Optimization">
+    For developers, identify:
+    1. Most demanded features in target area
+    2. Features with highest price premium
+    3. Underserved feature combinations
+    4. Cost vs. value analysis
+  </Accordion>
+</AccordionGroup>
+
+## Limitations & Considerations
+
+<Warning>
+  **Data Accuracy Notes:**
+  - Scraped data may contain errors from source websites
+  - Not all listings are verified or still available
+  - Prices may not reflect actual transaction values
+  - Data freshness varies by source and scraping frequency
+  
+  Always verify critical information directly with agents before making decisions.
+</Warning>
+
+<Note>
+  **Statistical Caveats:**
+  - Small sample sizes (< 20 properties) may not be statistically significant
+  - Outliers can skew averages - check median values too
+  - Seasonal variations affect comparisons across time periods
+  - Not all properties are captured (off-market deals, exclusive listings)
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search Filters" icon="filter" href="/guides/search-filters">
+    Use insights to refine your property searches
+  </Card>
+  <Card title="Saved Searches" icon="bookmark" href="/guides/saved-searches">
+    Monitor specific segments with saved search alerts
+  </Card>
+  <Card title="Scraping Jobs" icon="spider" href="/guides/scraping-jobs">
+    Keep data fresh with regular scraping
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/analytics">
+    Access analytics data programmatically
+  </Card>
+</CardGroup>

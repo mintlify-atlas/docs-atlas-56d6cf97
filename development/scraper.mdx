@@ -1,0 +1,405 @@
+---
+title: Scraper Service
+description: Python web scraping service with Playwright and BeautifulSoup
+---
+
+The Realtors' Practice scraper is a Python microservice that collects property listings from Nigerian real estate websites.
+
+## Tech Stack
+
+- **Framework**: FastAPI 0.115.12
+- **Server**: Uvicorn 0.34.3
+- **Browser Automation**: Playwright 1.52.0
+- **HTML Parsing**: BeautifulSoup 4.13.4
+- **Data Validation**: Pydantic 2.11.3
+- **Task Queue**: Celery 5.4.0
+- **Cache**: Redis 5.2.1
+- **HTTP Client**: httpx 0.28.1
+- **LLM Fallback**: Google Gemini 0.2.2
+
+## Project Structure
+
+```
+scraper/
+├── main.py                 # FastAPI app entry point
+├── requirements.txt        # Python dependencies
+├── scrapers/              # Site-specific scrapers
+│   ├── base.py           # Base scraper class
+│   ├── universal.py      # Universal scraper
+│   └── sites/            # Site-specific implementations
+│       ├── propertypro.py
+│       ├── privateproperty.py
+│       └── ...
+├── parsers/               # HTML parsers
+│   ├── listing_parser.py
+│   └── detail_parser.py
+├── tasks/                 # Celery tasks
+│   └── scrape_task.py
+├── models/                # Pydantic models
+│   └── property.py
+└── utils/                 # Utilities
+    ├── enrichment.py
+    └── validation.py
+```
+
+## Dependencies
+
+### Core Dependencies
+
+```txt
+# Web framework
+fastapi==0.115.12
+uvicorn[standard]==0.34.3
+
+# Scraping
+playwright==1.52.0
+beautifulsoup4==4.13.4
+lxml==5.4.0
+requests==2.32.3
+
+# Data processing
+pydantic==2.11.3
+
+# Queue
+celery==5.4.0
+redis==5.2.1
+
+# Utilities
+httpx==0.28.1
+python-dotenv==1.1.0
+
+# LLM Fallback
+google-genai==0.2.2
+```
+
+### Installation
+
+<CodeGroup>
+```bash pip
+pip install -r requirements.txt
+playwright install
+```
+
+```bash Poetry
+poetry install
+poetry run playwright install
+```
+</CodeGroup>
+
+## Running the Scraper
+
+### Development Server
+
+<CodeGroup>
+```bash Uvicorn
+uvicorn main:app --reload --port 8000
+```
+
+```bash FastAPI CLI
+fastapi dev main.py --port 8000
+```
+</CodeGroup>
+
+The API will be available at `http://localhost:8000`
+
+### API Documentation
+
+FastAPI auto-generates interactive API docs:
+
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+## Scraping Pipeline
+
+The scraper follows this workflow:
+
+```
+1. Receive Job Request
+   ↓
+2. Load Site Configuration
+   ↓
+3. Scrape Listing Pages
+   ↓
+4. Extract Property URLs
+   ↓
+5. Scrape Property Details
+   ↓
+6. Parse & Validate Data
+   ↓
+7. Enrich with LLM (if needed)
+   ↓
+8. Send to Backend API
+   ↓
+9. Update Job Status
+```
+
+## Site Configuration
+
+Sites are configured in the backend database (via `Site` model):
+
+```python
+# Example site configuration
+{
+  "key": "propertypro",
+  "name": "PropertyPro Nigeria",
+  "baseUrl": "https://www.propertypro.ng",
+  "enabled": true,
+  "parser": "propertypro",  # or "universal"
+  "listPaths": ["/for-sale", "/for-rent"],
+  "selectors": {
+    "listing_container": ".property-list",
+    "property_card": ".property-item",
+    "title": ".property-title",
+    "price": ".property-price",
+    "url": "a.property-link"
+  },
+  "detailSelectors": {
+    "title": "h1.title",
+    "price": ".price-tag",
+    "description": ".description",
+    "bedrooms": ".bedrooms",
+    "bathrooms": ".bathrooms"
+  },
+  "paginationType": "query_param",  # or "path", "infinite_scroll"
+  "maxPages": 50,
+  "requiresBrowser": false,
+  "customHeaders": {
+    "User-Agent": "Mozilla/5.0..."
+  }
+}
+```
+
+## Scraper Types
+
+### 1. Universal Scraper
+
+Uses site configuration and AI to scrape any site:
+
+```python
+from scrapers.universal import UniversalScraper
+
+scraper = UniversalScraper(site_config)
+listings = await scraper.scrape_listings(page=1)
+```
+
+### 2. Site-Specific Scrapers
+
+Custom scrapers for complex sites:
+
+```python
+from scrapers.sites.propertypro import PropertyProScraper
+
+scraper = PropertyProScraper(site_config)
+listings = await scraper.scrape_listings(page=1)
+```
+
+## Playwright vs Requests
+
+### Use Requests (Faster)
+
+- Static HTML sites
+- No JavaScript rendering needed
+- Fast, lightweight
+
+```python
+import httpx
+from bs4 import BeautifulSoup
+
+async with httpx.AsyncClient() as client:
+    response = await client.get(url)
+    soup = BeautifulSoup(response.text, 'lxml')
+    # Parse...
+```
+
+### Use Playwright (Slower, but powerful)
+
+- JavaScript-heavy sites
+- Infinite scroll
+- CAPTCHAs or anti-bot measures
+
+```python
+from playwright.async_api import async_playwright
+
+async with async_playwright() as p:
+    browser = await p.chromium.launch()
+    page = await browser.new_page()
+    await page.goto(url)
+    await page.wait_for_selector('.property-card')
+    html = await page.content()
+    # Parse...
+```
+
+## Data Validation
+
+Use Pydantic models to validate scraped data:
+
+```python
+from pydantic import BaseModel, Field, validator
+from typing import Optional
+
+class PropertyData(BaseModel):
+    title: str
+    price: Optional[float] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    location: Optional[str] = None
+    url: str
+    
+    @validator('price')
+    def validate_price(cls, v):
+        if v and v < 0:
+            raise ValueError('Price must be positive')
+        return v
+
+# Usage
+data = PropertyData(
+    title="3 Bedroom Flat",
+    price=5000000,
+    url="https://..."
+)
+```
+
+## LLM Enrichment
+
+For ambiguous or missing data, use Gemini LLM:
+
+```python
+from google import genai
+import os
+
+client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+
+def enrich_property(raw_data: dict) -> dict:
+    prompt = f"""
+    Extract structured property data from this text:
+    {raw_data['description']}
+    
+    Return JSON with: bedrooms, bathrooms, property_type, area
+    """
+    
+    response = client.models.generate_content(
+        model='gemini-2.0-flash-exp',
+        contents=prompt
+    )
+    
+    # Parse response and merge with raw_data
+    enriched = {**raw_data, **parse_llm_response(response.text)}
+    return enriched
+```
+
+## Sending Data to Backend
+
+After scraping and validation, send data to the backend:
+
+```python
+import httpx
+
+async def send_to_backend(properties: list[dict]):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{BACKEND_URL}/api/scrape/ingest",
+            json=properties,
+            headers={"X-Internal-Key": INTERNAL_API_KEY}
+        )
+        return response.json()
+```
+
+## Celery Task Queue
+
+For long-running scrape jobs, use Celery:
+
+```python
+from celery import Celery
+
+app = Celery('scraper', broker='redis://localhost:6379/0')
+
+@app.task
+def scrape_site_task(site_id: str, job_id: str):
+    # Load site config
+    # Run scraper
+    # Update job status
+    pass
+
+# Start Celery worker
+# celery -A tasks.scrape_task worker --loglevel=info
+```
+
+## Error Handling
+
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def safe_scrape(url: str):
+    try:
+        # Scraping logic
+        pass
+    except httpx.TimeoutException:
+        logger.error(f"Timeout scraping {url}")
+        # Retry or skip
+    except Exception as e:
+        logger.exception(f"Error scraping {url}: {e}")
+        # Log to backend
+```
+
+## Rate Limiting
+
+Respect site rate limits:
+
+```python
+import asyncio
+from time import time
+
+class RateLimiter:
+    def __init__(self, requests_per_second: float = 1.0):
+        self.delay = 1.0 / requests_per_second
+        self.last_request = 0
+    
+    async def wait(self):
+        now = time()
+        time_since_last = now - self.last_request
+        if time_since_last < self.delay:
+            await asyncio.sleep(self.delay - time_since_last)
+        self.last_request = time()
+
+# Usage
+limiter = RateLimiter(requests_per_second=2)
+
+for url in urls:
+    await limiter.wait()
+    await scrape(url)
+```
+
+## Job Types
+
+As defined in Prisma schema:
+
+- **PASSIVE_BULK**: Scheduled full-site scrapes
+- **ACTIVE_INTENT**: User-triggered search scrapes
+- **RESCRAPE**: Re-scrape specific properties
+- **SCHEDULED**: Cron-based scrapes
+
+## Deployment
+
+Deploy to Render or similar:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+playwright install --with-deps
+
+# Start server
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend API" icon="server" href="/development/backend">
+    Learn how the backend ingests scraped data
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database">
+    Understand how scraped data is stored
+  </Card>
+</CardGroup>

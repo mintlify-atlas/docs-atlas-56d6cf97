@@ -1,0 +1,637 @@
+---
+title: Notifications
+description: Stay informed with real-time alerts for saved search matches, price drops, scraping updates, and system events
+---
+
+## Overview
+
+Realtors' Practice provides multi-channel notifications to keep you updated on important events. Receive alerts in-app via Socket.io and by email through Resend, ensuring you never miss critical property market changes.
+
+## Notification Types
+
+The platform sends five types of notifications:
+
+<CardGroup cols={2}>
+  <Card title="NEW_MATCH" icon="sparkles">
+    **Saved Search Match**
+    
+    A property matching your saved search criteria has been added to the platform.
+    
+    Includes: Property details, match count, direct link
+  </Card>
+  
+  <Card title="PRICE_DROP" icon="arrow-down">
+    **Price Reduction**
+    
+    A property you're watching or that matches your criteria has reduced its price.
+    
+    Includes: Old price, new price, percentage change
+  </Card>
+  
+  <Card title="SCRAPE_COMPLETE" icon="circle-check">
+    **Scraping Job Finished**
+    
+    A scraping job you initiated has completed successfully.
+    
+    Includes: Total listings, new properties, duration, errors
+  </Card>
+  
+  <Card title="SCRAPE_FAILED" icon="circle-xmark">
+    **Scraping Job Failed**
+    
+    A scraping job encountered errors and couldn't complete.
+    
+    Includes: Error details, affected sites, logs link
+  </Card>
+  
+  <Card title="SYSTEM" icon="server">
+    **System Announcements**
+    
+    Important platform updates, maintenance notices, or administrative messages.
+    
+    Includes: Custom message from administrators
+  </Card>
+</CardGroup>
+
+## In-App Notifications
+
+Real-time notifications appear in the platform's notification center.
+
+### Viewing Notifications
+
+<Steps>
+  <Step title="Click the notification bell icon">
+    Located in the top navigation bar. A badge shows the count of unread notifications.
+  </Step>
+  
+  <Step title="Review notification list">
+    Notifications are displayed with:
+    - **Type icon**: Visual indicator of notification category
+    - **Title**: Brief summary of the event
+    - **Message**: Detailed information
+    - **Timestamp**: When the notification was created
+    - **Read status**: Unread notifications are highlighted
+  </Step>
+  
+  <Step title="Click to view details">
+    Selecting a notification marks it as read and navigates to the relevant page (property details, scrape job, etc.).
+  </Step>
+</Steps>
+
+### API: List Notifications
+
+Retrieve your notifications with pagination and filtering.
+
+```bash Request - All Notifications
+curl -X GET "https://api.realtorspractice.com/api/notifications?limit=20&offset=0" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```bash Request - Unread Only
+curl -X GET "https://api.realtorspractice.com/api/notifications?read=false&limit=20" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "notifications": [
+      {
+        "id": "cln1234567890",
+        "type": "NEW_MATCH",
+        "title": "New property matches your search",
+        "message": "A 3-bedroom flat in Lekki Phase 1 for ₦78M matches your saved search '3BR Flats in Lekki under ₦80M'",
+        "data": {
+          "propertyId": "clp9876543210",
+          "savedSearchId": "cls1234567890",
+          "savedSearchName": "3BR Flats in Lekki under ₦80M",
+          "propertyTitle": "Modern 3 Bedroom Flat with BQ - Lekki Phase 1",
+          "price": 78000000
+        },
+        "read": false,
+        "readAt": null,
+        "createdAt": "2026-03-11T10:30:00Z"
+      },
+      {
+        "id": "cln0987654321",
+        "type": "SCRAPE_COMPLETE",
+        "title": "Scrape job completed",
+        "message": "Your scraping job finished successfully. Found 87 listings, 23 new properties added.",
+        "data": {
+          "jobId": "clj1234567890",
+          "totalListings": 87,
+          "newListings": 23,
+          "duplicates": 64,
+          "errors": 2,
+          "durationMs": 462000
+        },
+        "read": true,
+        "readAt": "2026-03-11T09:15:00Z",
+        "createdAt": "2026-03-11T09:00:00Z"
+      }
+    ],
+    "unreadCount": 5
+  },
+  "page": 1,
+  "limit": 20,
+  "total": 47
+}
+```
+
+<Tip>
+  The `data` field contains structured information specific to each notification type. Use this to create deep links or display rich notification details in your UI.
+</Tip>
+
+### API: Get Unread Count
+
+Quickly check how many unread notifications you have (for badge display).
+
+```bash Request
+curl -X GET https://api.realtorspractice.com/api/notifications/unread-count \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "count": 5
+  }
+}
+```
+
+### API: Mark as Read
+
+Mark a specific notification as read.
+
+```bash Request
+curl -X PATCH https://api.realtorspractice.com/api/notifications/cln1234567890/read \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "cln1234567890",
+    "read": true,
+    "readAt": "2026-03-11T11:45:00Z"
+  },
+  "message": "Notification marked as read"
+}
+```
+
+### API: Mark All as Read
+
+Clear all unread notifications at once.
+
+```bash Request
+curl -X POST https://api.realtorspractice.com/api/notifications/mark-all-read \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": null,
+  "message": "All notifications marked as read"
+}
+```
+
+## Email Notifications
+
+Receive important alerts directly in your inbox.
+
+### Email Preferences
+
+Email notifications are configured per saved search. When creating or updating a saved search, set:
+
+```json
+{
+  "notifyEmail": true,    // Enable email notifications
+  "notifyInApp": true     // Enable in-app notifications
+}
+```
+
+<Note>
+  **Email Configuration:**
+  - Emails are sent to your registered account email
+  - Update your email address in your [profile settings](/guides/authentication#update-profile-information)
+  - Email notifications respect your saved search active status
+  - No emails are sent for inactive searches
+</Note>
+
+### Email Content
+
+Email notifications include:
+
+<AccordionGroup>
+  <Accordion title="NEW_MATCH Emails" icon="envelope">
+    **Subject:** "New property matches your search: [Search Name]"
+    
+    **Content:**
+    - Property title and key details
+    - Price and location
+    - Property image (if available)
+    - Direct link to property page
+    - Link to saved search dashboard
+    - Unsubscribe option
+    
+    Sent: Immediately when a new match is detected
+  </Accordion>
+  
+  <Accordion title="PRICE_DROP Emails" icon="tags">
+    **Subject:** "Price dropped on property you're watching"
+    
+    **Content:**
+    - Property title
+    - Old price → New price
+    - Percentage reduction
+    - Days since original listing
+    - Direct link to property
+    
+    Sent: Within minutes of price change detection
+  </Accordion>
+  
+  <Accordion title="SCRAPE_COMPLETE Emails" icon="check-double">
+    **Subject:** "Your scraping job completed - [X] new properties"
+    
+    **Content:**
+    - Job statistics (total, new, duplicates)
+    - Sites scraped
+    - Duration
+    - Link to job details
+    - Link to view new properties
+    
+    Sent: When job status changes to COMPLETED
+  </Accordion>
+  
+  <Accordion title="SCRAPE_FAILED Emails" icon="triangle-exclamation">
+    **Subject:** "Scraping job failed"
+    
+    **Content:**
+    - Error summary
+    - Affected sites
+    - Link to error logs
+    - Retry instructions
+    
+    Sent: When job status changes to FAILED
+  </Accordion>
+</AccordionGroup>
+
+### Managing Email Subscriptions
+
+<Steps>
+  <Step title="Per-Search Control">
+    Enable/disable emails for each saved search individually:
+    
+    ```bash
+    PATCH /api/saved-searches/{id}
+    {
+      "notifyEmail": false
+    }
+    ```
+  </Step>
+  
+  <Step title="Pause All Emails">
+    Temporarily disable all email notifications by deactivating your saved searches:
+    
+    ```bash
+    PATCH /api/saved-searches/{id}
+    {
+      "isActive": false
+    }
+    ```
+  </Step>
+  
+  <Step title="Unsubscribe Link">
+    Click "Unsubscribe" at the bottom of any notification email to disable emails for that specific saved search.
+  </Step>
+</Steps>
+
+<Warning>
+  System notifications (SYSTEM type) are always sent to all users and cannot be disabled. These are rare and reserved for critical platform announcements.
+</Warning>
+
+## Real-Time Updates (Socket.io)
+
+Connect to Socket.io for instant notification delivery without polling.
+
+### Connection Setup
+
+```javascript JavaScript/TypeScript
+import io from 'socket.io-client';
+
+const socket = io('https://api.realtorspractice.com', {
+  auth: {
+    token: 'YOUR_JWT_TOKEN'
+  },
+  transports: ['websocket', 'polling']
+});
+
+socket.on('connect', () => {
+  console.log('Connected to notification service');
+});
+
+socket.on('disconnect', () => {
+  console.log('Disconnected from notification service');
+});
+```
+
+### Listen for Notification Events
+
+```javascript
+// New notification received
+socket.on('notification:new', (notification) => {
+  console.log('New notification:', notification);
+  
+  // Update UI badge
+  updateUnreadCount(notification.unreadCount);
+  
+  // Show toast/banner
+  showNotificationToast({
+    title: notification.title,
+    message: notification.message,
+    type: notification.type
+  });
+  
+  // Play sound (optional)
+  if (notification.type === 'NEW_MATCH' || notification.type === 'PRICE_DROP') {
+    playNotificationSound();
+  }
+});
+
+// Notification marked as read (from another device/tab)
+socket.on('notification:read', (notificationId) => {
+  console.log('Notification marked read:', notificationId);
+  updateNotificationStatus(notificationId, true);
+});
+
+// All notifications marked as read
+socket.on('notification:all-read', () => {
+  console.log('All notifications marked as read');
+  clearUnreadBadge();
+});
+```
+
+### Scraping Progress Events
+
+In addition to notification events, Socket.io broadcasts scraping job progress:
+
+```javascript
+// Scraping progress update
+socket.on('scrape:progress', (data) => {
+  console.log(`Scrape progress: ${data.processed}/${data.total}`);
+  updateProgressBar(data.jobId, data.processed, data.total);
+});
+
+// Scraping log entry
+socket.on('scrape:log', (log) => {
+  console.log(`[${log.level}] ${log.message}`);
+  appendLogEntry(log);
+});
+
+// Scraping completed
+socket.on('scrape:complete', (result) => {
+  console.log(`Scrape complete: ${result.newListings} new properties`);
+  showCompletionNotification(result);
+});
+
+// Scraping error
+socket.on('scrape:error', (error) => {
+  console.error(`Scrape failed: ${error.error}`);
+  showErrorNotification(error);
+});
+```
+
+<Tip>
+  **Reconnection Handling:**
+  
+  Socket.io automatically reconnects on connection loss. When reconnecting, fetch the latest notifications to ensure you haven't missed any during the disconnection:
+  
+  ```javascript
+  socket.on('connect', async () => {
+    const response = await fetch('/api/notifications?read=false');
+    const { data } = await response.json();
+    syncNotifications(data.notifications);
+  });
+  ```
+</Tip>
+
+## Notification Data Structure
+
+### Common Fields
+
+All notifications share these base fields:
+
+```typescript
+interface Notification {
+  id: string;
+  userId: string;
+  type: 'NEW_MATCH' | 'PRICE_DROP' | 'SCRAPE_COMPLETE' | 'SCRAPE_FAILED' | 'SYSTEM';
+  title: string;
+  message: string;
+  data: object | null;  // Type-specific data
+  read: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+```
+
+### Type-Specific Data
+
+<CodeGroup>
+```json NEW_MATCH
+{
+  "type": "NEW_MATCH",
+  "data": {
+    "propertyId": "clp9876543210",
+    "savedSearchId": "cls1234567890",
+    "savedSearchName": "3BR Flats in Lekki under ₦80M",
+    "propertyTitle": "Modern 3 Bedroom Flat",
+    "price": 78000000,
+    "area": "Lekki Phase 1",
+    "bedrooms": 3
+  }
+}
+```
+
+```json PRICE_DROP
+{
+  "type": "PRICE_DROP",
+  "data": {
+    "propertyId": "clp1111111111",
+    "propertyTitle": "Luxury Detached Duplex",
+    "oldPrice": 125000000,
+    "newPrice": 110000000,
+    "percentageChange": -12,
+    "daysOnMarket": 68
+  }
+}
+```
+
+```json SCRAPE_COMPLETE
+{
+  "type": "SCRAPE_COMPLETE",
+  "data": {
+    "jobId": "clj1234567890",
+    "totalListings": 87,
+    "newListings": 23,
+    "duplicates": 64,
+    "errors": 2,
+    "durationMs": 462000,
+    "sites": ["PropertyPro.ng", "ToLet.com.ng"]
+  }
+}
+```
+
+```json SCRAPE_FAILED
+{
+  "type": "SCRAPE_FAILED",
+  "data": {
+    "jobId": "clj9999999999",
+    "error": "Connection timeout",
+    "sites": ["PropertyPro.ng"],
+    "logsUrl": "/admin/scrape/logs?jobId=clj9999999999"
+  }
+}
+```
+
+```json SYSTEM
+{
+  "type": "SYSTEM",
+  "data": {
+    "priority": "high",
+    "category": "maintenance",
+    "actionRequired": false
+  }
+}
+```
+</CodeGroup>
+
+## Notification Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Set Appropriate Preferences" icon="sliders">
+    Enable email for high-priority searches, use in-app only for broader monitoring.
+  </Card>
+  <Card title="Regular Review" icon="inbox">
+    Check notifications daily to avoid missing time-sensitive opportunities.
+  </Card>
+  <Card title="Mark as Read" icon="check">
+    Keep your notification list clean by marking items as read after reviewing.
+  </Card>
+  <Card title="Fine-Tune Searches" icon="filter">
+    If you're getting too many NEW_MATCH notifications, refine your saved search criteria.
+  </Card>
+  <Card title="Enable Sounds" icon="volume-high">
+    Use browser notification sounds for PRICE_DROP alerts to act quickly on deals.
+  </Card>
+  <Card title="Test Notifications" icon="vial">
+    After setting up, create a test saved search to verify notifications are working.
+  </Card>
+</CardGroup>
+
+## Managing Notification Volume
+
+<AccordionGroup>
+  <Accordion title="Too many NEW_MATCH notifications">
+    **Solutions:**
+    - Make saved search criteria more specific (narrow price range, specific areas)
+    - Disable email notifications, keep only in-app
+    - Increase minimum price threshold
+    - Reduce number of active saved searches
+  </Accordion>
+  
+  <Accordion title="Missing important notifications">
+    **Check:**
+    - Saved search `isActive` is `true`
+    - `notifyInApp` or `notifyEmail` is enabled
+    - Email address is correct and verified
+    - Check spam folder for email notifications
+    - Verify Socket.io connection is active
+  </Accordion>
+  
+  <Accordion title="Duplicate notifications">
+    **Causes:**
+    - Multiple saved searches with overlapping criteria
+    - Browser notifications + in-app notifications
+    
+    **Solutions:**
+    - Consolidate similar saved searches
+    - Disable browser push notifications if redundant
+  </Accordion>
+</AccordionGroup>
+
+## Notification Retention
+
+<Note>
+  **Data Retention Policy:**
+  - Notifications are stored indefinitely
+  - Read notifications older than 90 days may be archived
+  - Unread notifications are never automatically deleted
+  - Deleted user accounts remove all associated notifications
+</Note>
+
+## Privacy & Security
+
+<Warning>
+  **Notification Security:**
+  - Notifications contain property details but not personal data of other users
+  - Email notifications are sent via secure Resend service
+  - Socket.io connections require valid JWT authentication
+  - Notifications are private and only visible to the intended user
+  - Never share notification emails containing property or account details
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Socket.io not connecting">
+    Check:
+    - JWT token is valid and not expired
+    - Firewall/proxy allows WebSocket connections
+    - Browser supports WebSocket protocol
+    - CORS policy allows your domain
+    
+    Fallback: Use REST API polling as temporary workaround.
+  </Accordion>
+  
+  <Accordion title="Email notifications not arriving">
+    Verify:
+    - Email address in your profile is correct
+    - Check spam/junk folder
+    - Ensure `notifyEmail: true` on saved search
+    - Saved search is active (`isActive: true`)
+    - Email service (Resend) is operational
+    
+    Test: Update your profile email to trigger a verification email.
+  </Accordion>
+  
+  <Accordion title="Notifications delayed">
+    Expected delays:
+    - NEW_MATCH: Depends on saved search check frequency (hourly)
+    - PRICE_DROP: Detected during property rescrapes
+    - SCRAPE events: Real-time but may batch for performance
+    
+    In-app notifications via Socket.io are instant. Email may have 1-2 minute delay.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Saved Searches" icon="bookmark" href="/guides/saved-searches">
+    Set up saved searches to trigger notifications
+  </Card>
+  <Card title="Authentication" icon="user" href="/guides/authentication">
+    Update your email and profile settings
+  </Card>
+  <Card title="Scraping Jobs" icon="spider" href="/guides/scraping-jobs">
+    Learn about scrape completion notifications
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/notifications">
+    Complete notifications API documentation
+  </Card>
+</CardGroup>

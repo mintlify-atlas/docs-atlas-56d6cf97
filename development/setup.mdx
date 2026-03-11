@@ -1,0 +1,205 @@
+---
+title: Local Development Setup
+description: Complete guide to setting up Realtors' Practice locally
+---
+
+This guide walks you through setting up the entire Realtors' Practice platform on your local machine.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** v18 or higher
+- **npm** v9 or higher
+- **PostgreSQL** (local or cloud instance like CockroachDB)
+- **Meilisearch** (local or cloud)
+- **Redis** (optional, for job queues)
+- **Python** 3.11+ (for scraper service)
+
+## Environment Variables
+
+<Steps>
+  <Step title="Backend Environment">
+    Create `backend/.env` with the following:
+
+    ```env
+    # Database
+    DATABASE_URL="postgresql://user:password@localhost:5432/realtors_practice"
+
+    # Supabase (Auth only)
+    SUPABASE_URL="https://your-project.supabase.co"
+    SUPABASE_ANON_KEY="your-anon-key"
+    SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+    # Frontend URL (for email links, CORS)
+    FRONTEND_URL="http://localhost:3000"
+    CORS_ORIGIN="http://localhost:3000"
+
+    # Email (Resend)
+    RESEND_API_KEY="re_xxxxxxxxxxxx"
+    EMAIL_FROM="Realtors Practice <noreply@yourdomain.com>"
+
+    # Scraper
+    SCRAPER_URL="http://localhost:8000"
+    INTERNAL_API_KEY="your-internal-api-key"
+
+    # Redis (optional, for Celery job queue)
+    REDIS_URL=""
+
+    # Meilisearch
+    MEILISEARCH_URL="http://localhost:7700"
+    MEILISEARCH_MASTER_KEY=""
+    ```
+  </Step>
+
+  <Step title="Frontend Environment">
+    Create `frontend/.env.local` with the following:
+
+    ```env
+    NEXT_PUBLIC_API_URL="http://localhost:5000/api"
+    NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+    NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+    ```
+  </Step>
+</Steps>
+
+## Installation
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone <repository-url>
+    cd realtors-practice
+    ```
+  </Step>
+
+  <Step title="Install Backend Dependencies">
+    ```bash
+    cd backend
+    npm install
+    ```
+  </Step>
+
+  <Step title="Install Frontend Dependencies">
+    ```bash
+    cd frontend
+    npm install
+    ```
+  </Step>
+
+  <Step title="Install Scraper Dependencies">
+    ```bash
+    cd scraper
+    pip install -r requirements.txt
+    playwright install
+    ```
+  </Step>
+
+  <Step title="Setup Database">
+    Generate Prisma client and push schema to database:
+
+    ```bash
+    cd backend
+    npx prisma generate
+    npx prisma db push
+    ```
+
+    Optionally seed the database:
+
+    ```bash
+    npm run seed
+    ```
+  </Step>
+</Steps>
+
+## Running Services
+
+You'll need to run multiple services in separate terminal windows.
+
+<Steps>
+  <Step title="Start Backend">
+    Open a terminal and run:
+
+    ```bash
+    cd backend
+    npm run dev
+    ```
+
+    The API server will start on `http://localhost:5000`
+  </Step>
+
+  <Step title="Start Frontend">
+    Open a new terminal and run:
+
+    ```bash
+    cd frontend
+    npm run dev
+    ```
+
+    The Next.js app will start on `http://localhost:3000`
+  </Step>
+
+  <Step title="Start Scraper (Optional)">
+    Open a new terminal and run:
+
+    ```bash
+    cd scraper
+    uvicorn main:app --reload --port 8000
+    ```
+
+    The scraper service will start on `http://localhost:8000`
+  </Step>
+
+  <Step title="Start Meilisearch (If Local)">
+    If running Meilisearch locally:
+
+    ```bash
+    meilisearch --master-key="your-master-key"
+    ```
+
+    Default port is `7700`
+  </Step>
+</Steps>
+
+## Verification
+
+After starting all services:
+
+1. Visit `http://localhost:3000` - you should see the homepage
+2. Visit `http://localhost:5000/api/health` - should return API health status
+3. Visit `http://localhost:8000/docs` - should show FastAPI docs for scraper
+
+## Common Issues
+
+### Database Connection Failed
+
+Ensure PostgreSQL is running and `DATABASE_URL` is correct. For CockroachDB, make sure to use the connection string format:
+
+```
+postgresql://user:password@host:26257/database?sslmode=require
+```
+
+### Prisma Client Not Generated
+
+Run `npx prisma generate` in the backend directory.
+
+### Port Already in Use
+
+If ports 3000, 5000, or 8000 are in use, you can change them in the respective configuration files or kill the processes using those ports.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Frontend Development" icon="laptop-code" href="/development/frontend">
+    Learn about the Next.js frontend structure and development workflow
+  </Card>
+  <Card title="Backend Development" icon="server" href="/development/backend">
+    Explore the Express API architecture and patterns
+  </Card>
+  <Card title="Database Management" icon="database" href="/development/database">
+    Work with Prisma, migrations, and the database schema
+  </Card>
+  <Card title="Scraper Service" icon="spider" href="/development/scraper">
+    Understand the Python scraping pipeline
+  </Card>
+</CardGroup>

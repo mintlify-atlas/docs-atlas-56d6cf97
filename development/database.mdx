@@ -1,0 +1,511 @@
+---
+title: Database Management
+description: Prisma schema, migrations, and CockroachDB connection
+---
+
+Realtors' Practice uses Prisma ORM with CockroachDB (PostgreSQL-compatible) as the primary database.
+
+## Database Stack
+
+- **Database**: CockroachDB (PostgreSQL-compatible)
+- **ORM**: Prisma 5.22
+- **Search Engine**: Meilisearch
+- **Cache**: Redis
+
+## Connection
+
+Set the `DATABASE_URL` in `backend/.env`:
+
+```env
+DATABASE_URL="postgresql://user:password@host:26257/realtors_practice?sslmode=require"
+```
+
+For CockroachDB Cloud, use the connection string from the dashboard. For local PostgreSQL:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/realtors_practice"
+```
+
+## Prisma Schema Overview
+
+The schema is located at `backend/prisma/schema.prisma`.
+
+### Core Models
+
+#### User
+
+Manages admin and viewer accounts:
+
+```prisma
+model User {
+  id            String    @id @default(cuid())
+  supabaseId    String    @unique
+  email         String    @unique
+  role          UserRole  @default(VIEWER)
+  isActive      Boolean   @default(true)
+  firstName     String?
+  lastName      String?
+  avatarUrl     String?
+  phone         String?
+  
+  savedSearches   SavedSearch[]
+  propertyEdits   PropertyVersion[]   @relation("EditedBy")
+  scrapeJobs      ScrapeJob[]         @relation("CreatedBy")
+  notifications   Notification[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+```
+
+Roles: `ADMIN`, `PENDING_ADMIN`, `EDITOR`, `VIEWER`, `API_USER`
+
+#### Property
+
+The main property listing model with 80+ fields:
+
+```prisma
+model Property {
+  id                  String              @id @default(cuid())
+  hash                String              @unique
+  
+  // Basic info
+  title               String
+  listingUrl          String
+  source              String
+  siteId              String
+  status              PropertyStatus      @default(AVAILABLE)
+  listingType         ListingType
+  category            PropertyCategory    @default(RESIDENTIAL)
+  
+  // Property details
+  propertyType        String?
+  bedrooms            Int?
+  bathrooms           Int?
+  landSizeSqm         Float?
+  
+  // Financial
+  price               Float?
+  priceCurrency       String              @default("NGN")
+  
+  // Location
+  area                String?
+  state               String?             @default("Lagos")
+  latitude            Float?
+  longitude           Float?
+  
+  // Relations
+  site                Site                @relation(fields: [siteId], references: [id])
+  versions            PropertyVersion[]
+  priceHistory        PriceHistory[]
+  
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+```
+
+Key enums:
+- `PropertyCategory`: RESIDENTIAL, COMMERCIAL, LAND, SHORTLET, INDUSTRIAL
+- `ListingType`: SALE, RENT, LEASE, SHORTLET
+- `PropertyStatus`: AVAILABLE, SOLD, RENTED, UNDER_OFFER, WITHDRAWN, EXPIRED
+
+#### Site
+
+Scraping source configuration:
+
+```prisma
+model Site {
+  id              String    @id @default(cuid())
+  key             String    @unique
+  name            String
+  baseUrl         String
+  enabled         Boolean   @default(true)
+  parser          String    @default("universal")
+  
+  listPaths       String[]  @default([])
+  selectors       Json?
+  detailSelectors Json?
+  maxPages        Int       @default(30)
+  requiresBrowser Boolean   @default(false)
+  
+  properties      Property[]
+  scrapeJobs      ScrapeJob[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+```
+
+#### PropertyVersion
+
+Tracks all changes to properties:
+
+```prisma
+model PropertyVersion {
+  id            String        @id @default(cuid())
+  propertyId    String
+  version       Int
+  changeSource  ChangeSource
+  changedBy     String?
+  
+  previousData  Json
+  newData       Json
+  changedFields String[]
+  
+  createdAt     DateTime      @default(now())
+}
+```
+
+`ChangeSource`: SCRAPER, MANUAL_EDIT, ENRICHMENT, SYSTEM
+
+#### ScrapeJob
+
+Tracks scraping jobs:
+
+```prisma
+model ScrapeJob {
+  id            String          @id @default(cuid())
+  type          ScrapeJobType
+  status        ScrapeJobStatus @default(PENDING)
+  createdById   String?
+  
+  siteIds       String[]
+  parameters    Json?
+  
+  totalListings   Int           @default(0)
+  newListings     Int           @default(0)
+  updatedListings Int           @default(0)
+  duplicates      Int           @default(0)
+  
+  startedAt     DateTime?
+  completedAt   DateTime?
+  
+  logs          ScrapeLog[]
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+```
+
+Types: `PASSIVE_BULK`, `ACTIVE_INTENT`, `RESCRAPE`, `SCHEDULED`
+
+#### SavedSearch
+
+User-saved search filters with notifications:
+
+```prisma
+model SavedSearch {
+  id            String    @id @default(cuid())
+  userId        String
+  name          String
+  
+  filters       Json
+  naturalQuery  String?
+  
+  isActive      Boolean   @default(true)
+  notifyEmail   Boolean   @default(false)
+  notifyInApp   Boolean   @default(true)
+  
+  matches       SavedSearchMatch[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+```
+
+## Prisma Commands
+
+### Generate Client
+
+After schema changes, regenerate the Prisma client:
+
+<CodeGroup>
+```bash npm
+npx prisma generate
+```
+
+```bash yarn
+yarn prisma generate
+```
+
+```bash pnpm
+pnpm prisma generate
+```
+</CodeGroup>
+
+### Push Schema (Development)
+
+Push schema changes to the database without migrations:
+
+```bash
+npx prisma db push
+```
+
+Use this during development for quick iteration.
+
+### Create Migration (Production)
+
+Create a migration file:
+
+```bash
+npx prisma migrate dev --name add_property_tags
+```
+
+This creates a migration in `prisma/migrations/`.
+
+### Run Migrations
+
+Apply pending migrations (production):
+
+```bash
+npx prisma migrate deploy
+```
+
+### Reset Database
+
+**⚠️ WARNING: This will delete all data!**
+
+```bash
+npx prisma migrate reset
+```
+
+This drops the database, re-applies all migrations, and runs the seed script.
+
+### Prisma Studio
+
+Open a GUI to view and edit data:
+
+```bash
+npx prisma studio
+```
+
+Access at `http://localhost:5555`
+
+## Database Seeding
+
+The seed script is at `backend/prisma/seed.ts`.
+
+### Run Seed
+
+<CodeGroup>
+```bash npm
+npm run seed
+```
+
+```bash yarn
+yarn seed
+```
+
+```bash Direct
+npx ts-node prisma/seed.ts
+```
+</CodeGroup>
+
+### Example Seed Script
+
+```typescript
+// prisma/seed.ts
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  // Create sites
+  const propertypro = await prisma.site.upsert({
+    where: { key: 'propertypro' },
+    update: {},
+    create: {
+      key: 'propertypro',
+      name: 'PropertyPro Nigeria',
+      baseUrl: 'https://www.propertypro.ng',
+      parser: 'propertypro',
+      listPaths: ['/for-sale', '/for-rent'],
+      enabled: true,
+    },
+  });
+
+  console.log('Seeded:', { propertypro });
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+```
+
+## Querying with Prisma
+
+### Find Many
+
+```typescript
+const properties = await prisma.property.findMany({
+  where: {
+    status: 'AVAILABLE',
+    listingType: 'SALE',
+    state: 'Lagos',
+    price: { gte: 10000000, lte: 50000000 },
+  },
+  include: {
+    site: true,
+    priceHistory: true,
+  },
+  orderBy: { createdAt: 'desc' },
+  take: 20,
+});
+```
+
+### Find Unique
+
+```typescript
+const property = await prisma.property.findUnique({
+  where: { id: 'cuid...' },
+  include: {
+    versions: { orderBy: { version: 'desc' }, take: 5 },
+  },
+});
+```
+
+### Create
+
+```typescript
+const property = await prisma.property.create({
+  data: {
+    hash: 'unique-hash',
+    title: '3 Bedroom Flat',
+    listingUrl: 'https://...',
+    source: 'propertypro',
+    siteId: site.id,
+    listingType: 'SALE',
+    price: 25000000,
+    bedrooms: 3,
+    bathrooms: 2,
+    state: 'Lagos',
+  },
+});
+```
+
+### Update
+
+```typescript
+const updated = await prisma.property.update({
+  where: { id: 'cuid...' },
+  data: {
+    price: 23000000,
+    currentVersion: { increment: 1 },
+  },
+});
+```
+
+### Delete (Soft)
+
+```typescript
+const deleted = await prisma.property.update({
+  where: { id: 'cuid...' },
+  data: { deletedAt: new Date() },
+});
+```
+
+### Transactions
+
+```typescript
+const result = await prisma.$transaction(async (tx) => {
+  // Update property
+  const property = await tx.property.update({
+    where: { id: 'cuid...' },
+    data: { price: 20000000 },
+  });
+
+  // Create price history
+  await tx.priceHistory.create({
+    data: {
+      propertyId: property.id,
+      price: 20000000,
+      source: 'MANUAL_EDIT',
+    },
+  });
+
+  return property;
+});
+```
+
+## Indexes
+
+The schema includes numerous indexes for performance:
+
+```prisma
+@@index([hash])
+@@index([siteId])
+@@index([status])
+@@index([listingType])
+@@index([state, area])
+@@index([price])
+@@index([latitude, longitude])
+@@index([listingType, category, state, area])
+```
+
+Compound indexes optimize complex queries used in search.
+
+## Meilisearch Integration
+
+Properties are also indexed in Meilisearch for full-text search:
+
+```typescript
+import { MeiliSearch } from 'meilisearch';
+
+const client = new MeiliSearch({
+  host: process.env.MEILISEARCH_URL,
+  apiKey: process.env.MEILISEARCH_MASTER_KEY,
+});
+
+const index = client.index('properties');
+
+// Index a property
+await index.addDocuments([
+  {
+    id: property.id,
+    title: property.title,
+    description: property.description,
+    area: property.area,
+    state: property.state,
+    price: property.price,
+    bedrooms: property.bedrooms,
+  },
+]);
+
+// Search
+const results = await index.search('3 bedroom flat lekki', {
+  filter: 'price > 5000000 AND state = "Lagos"',
+  limit: 20,
+});
+```
+
+## Backup & Restore
+
+### Backup (CockroachDB)
+
+```sql
+BACKUP DATABASE realtors_practice TO 's3://bucket/backup?AWS_ACCESS_KEY_ID=xxx';
+```
+
+### Restore
+
+```sql
+RESTORE DATABASE realtors_practice FROM 's3://bucket/backup?AWS_ACCESS_KEY_ID=xxx';
+```
+
+For local PostgreSQL, use `pg_dump` and `pg_restore`.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Development" icon="server" href="/development/backend">
+    Learn how to query and manipulate data in services
+  </Card>
+  <Card title="Scraper Service" icon="spider" href="/development/scraper">
+    Understand how scraped data flows into the database
+  </Card>
+</CardGroup>

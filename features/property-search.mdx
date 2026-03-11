@@ -1,0 +1,259 @@
+---
+title: Property Search
+description: Powerful full-text search with Meilisearch, facets, filters, and natural language queries
+icon: search
+---
+
+Realtors' Practice uses **Meilisearch** to deliver lightning-fast, typo-tolerant search across 85+ property fields. Users can search with traditional filters or ask natural language questions.
+
+## Search Interface
+
+The search bar combines multiple input methods for maximum flexibility:
+
+<CardGroup cols={2}>
+  <Card title="Text Search" icon="keyboard">
+    Type keywords, locations, or property descriptions. Autocomplete suggests matching properties as you type.
+  </Card>
+  <Card title="Voice Search" icon="microphone">
+    Click the mic icon to speak your search. Supports Nigerian place names with phonetic corrections (e.g., "Leki" → "Lekki").
+  </Card>
+  <Card title="Category Filters" icon="filter">
+    Filter by Residential, Commercial, Land, Shortlet, or Industrial from the dropdown.
+  </Card>
+  <Card title="Recent Searches" icon="clock">
+    Quickly re-run your last 6 searches without retyping.
+  </Card>
+</CardGroup>
+
+### Voice Search Features
+
+The voice recognition system includes Nigerian-specific enhancements:
+
+<Info>
+**Phonetic Dictionary**: Automatically corrects common mispronunciations like "Ikoy" → "Ikoyi", "Shurulere" → "Surulere", and "Viktor" → "Victoria Island".
+</Info>
+
+```typescript
+// Supported locations (search-bar.tsx:61-75)
+const NIGERIAN_DICT: Record<string, string> = {
+  "leki": "Lekki",
+  "ikoy": "Ikoyi",
+  "ikeya": "Ikeja",
+  "shurulere": "Surulere",
+  "yava": "Yaba",
+  "aja": "Ajah",
+  "gbaganda": "Gbagada",
+  "ojudu": "Ojodu",
+  "viktor": "Victoria",
+  // ...and more
+};
+```
+
+## Search Query Examples
+
+Users can search with varying levels of specificity:
+
+<CodeGroup>
+```text Basic Keyword
+3 bedroom flat
+```
+
+```text Location + Budget
+Detached duplex in Ikoyi under 50M
+```
+
+```text Natural Language
+2 bed apartment in Abuja under 3M annual rent
+```
+
+```text Feature-Based
+Furnished studio in Victoria Island with pool
+```
+</CodeGroup>
+
+## Search Parameters
+
+### Query String
+
+The search endpoint accepts these parameters (search.controller.ts:14-25):
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `q` | string | `""` | Search query (keywords, locations, descriptions) |
+| `limit` | number | `20` | Number of results to return |
+| `offset` | number | `0` | Pagination offset |
+| `facets` | string[] | `["categoryName", "listingType", "bedrooms", "state"]` | Fields to return faceted counts for |
+| `filters` | string[] | `[]` | Filter expressions (e.g., `price < 5000000`) |
+| `sort` | string[] | `["createdAt:desc"]` | Sort order |
+
+### Default Facets
+
+```typescript
+const facets = facetsParam 
+  ? facetsParam.split(",") 
+  : ["categoryName", "listingType", "bedrooms", "state"];
+```
+
+Facets return aggregated counts for filtering:
+
+```json
+{
+  "facets": {
+    "state": { "Lagos": 1203, "Abuja": 456, "Rivers": 89 },
+    "bedrooms": { "2": 340, "3": 567, "4": 298 },
+    "listingType": { "SALE": 892, "RENT": 671 }
+  }
+}
+```
+
+## Autocomplete Suggestions
+
+The `/api/search/suggestions` endpoint provides typeahead results:
+
+<Steps>
+  <Step title="User types query">
+    Minimum 2 characters trigger a suggestion request (search-bar.tsx:176).
+  </Step>
+  <Step title="Meilisearch returns matches">
+    Limited to 5 results by default (search.controller.ts:56).
+  </Step>
+  <Step title="Display rich previews">
+    Shows property title, location, and price (search-bar.tsx:476-505).
+  </Step>
+</Steps>
+
+```tsx
+// Suggestion response structure
+interface Suggestion {
+  title: string;
+  location?: string;
+  price?: number;
+}
+```
+
+## Indexed Fields
+
+Meilisearch indexes 85+ property fields for full-text search:
+
+<AccordionGroup>
+  <Accordion title="Basic Info" icon="house">
+    - Title
+    - Description
+    - Property type & subtype
+    - Listing type (Sale/Rent/Lease/Shortlet)
+    - Category (Residential/Commercial/Land)
+  </Accordion>
+
+  <Accordion title="Location" icon="location-dot">
+    - Full address
+    - Estate name
+    - Street name
+    - Area, LGA, State
+    - Landmarks (array)
+  </Accordion>
+
+  <Accordion title="Property Details" icon="ruler">
+    - Bedrooms, bathrooms, toilets, BQ
+    - Land size (sqm)
+    - Building size (sqm)
+    - Year built
+    - Furnishing status
+    - Condition
+  </Accordion>
+
+  <Accordion title="Financial" icon="dollar-sign">
+    - Price
+    - Price per sqm
+    - Service charge
+    - Payment plan
+    - Legal fees
+  </Accordion>
+
+  <Accordion title="Amenities" icon="sparkles">
+    - Features (array)
+    - Security features (array)
+    - Utilities (array)
+    - Parking spaces
+  </Accordion>
+
+  <Accordion title="Agent Info" icon="user">
+    - Agent name, phone, email
+    - Agency name
+    - Contact info
+  </Accordion>
+</AccordionGroup>
+
+## Graceful Degradation
+
+If Meilisearch is unavailable, the search system returns empty results without breaking the UI:
+
+```typescript
+// search.controller.ts:40-43
+if (error.message && error.message.includes("failed")) {
+  return sendSuccess(res, 
+    { hits: [], nbHits: 0, facets: {} }, 
+    "Search unavailable (Meilisearch down)"
+  );
+}
+```
+
+<Tip>
+Users can still browse properties via direct navigation or saved searches when Meilisearch is down.
+</Tip>
+
+## Search Workflow
+
+<Steps>
+  <Step title="User enters query">
+    Types, speaks, or selects from recent searches.
+  </Step>
+  <Step title="Category selection (optional)">
+    Narrows results to specific property types.
+  </Step>
+  <Step title="Query sent to Meilisearch">
+    Backend forwards request to search index with facets and filters.
+  </Step>
+  <Step title="Results rendered">
+    Properties displayed in grid/list view with map markers.
+  </Step>
+  <Step title="Facets applied">
+    User refines results using sidebar filters.
+  </Step>
+</Steps>
+
+## Recent Searches
+
+The system stores recent queries in `localStorage` for quick access:
+
+```typescript
+// search-bar.tsx:141-145
+function saveRecentSearch(query: string) {
+  const recent = getRecentSearches().filter((q) => q !== query);
+  recent.unshift(query);
+  localStorage.setItem(
+    RECENT_SEARCHES_KEY, 
+    JSON.stringify(recent.slice(0, MAX_RECENT))
+  );
+}
+```
+
+<Info>
+Recent searches are client-side only and persist across sessions.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Intelligence" icon="brain" href="/features/ai-intelligence">
+    Learn how natural language queries are processed.
+  </Card>
+  <Card title="Active Scraping" icon="globe" href="/features/scraping-system">
+    Trigger real-time scrapes when search results are insufficient.
+  </Card>
+  <Card title="Property Filters" icon="sliders" href="/customize/filters">
+    Deep dive into advanced filter options.
+  </Card>
+  <Card title="Map Integration" icon="map" href="/features/mapping">
+    Explore properties on interactive maps.
+  </Card>
+</CardGroup>

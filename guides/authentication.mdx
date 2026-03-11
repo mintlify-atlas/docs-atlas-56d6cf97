@@ -1,0 +1,348 @@
+---
+title: Authentication & Access Control
+description: Learn how to sign in, manage your profile, and understand user roles in Realtors' Practice
+---
+
+## Overview
+
+Realtors' Practice uses **Supabase** for secure authentication with JWT tokens. Access is controlled through a role-based system with four distinct permission levels.
+
+## User Roles
+
+The platform supports four role types, each with specific permissions:
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="shield">
+    Full system access including user management, scraping jobs, and all property operations
+  </Card>
+  <Card title="Editor" icon="pen">
+    Can create and edit properties, manage saved searches, and view analytics
+  </Card>
+  <Card title="Viewer" icon="eye">
+    Read-only access to properties, search functionality, and saved searches
+  </Card>
+  <Card title="API User" icon="code">
+    Programmatic access for integrations and automated workflows
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### Accepting an Invitation
+
+New users join the platform through an email invitation from an Admin.
+
+<Steps>
+  <Step title="Check your email">
+    You'll receive an invitation email with a 6-character alphanumeric code (e.g., `A3F1B2`). This code expires in 24 hours.
+  </Step>
+  
+  <Step title="Navigate to the registration page">
+    Click the link in the email or go to the registration page manually.
+  </Step>
+  
+  <Step title="Enter your invitation code">
+    Paste the 6-character code to validate your invitation.
+    
+    <Note>
+      The system will automatically verify:
+      - The code exists and hasn't been used
+      - The code hasn't expired
+      - Your email matches the invitation
+    </Note>
+  </Step>
+  
+  <Step title="Complete your profile">
+    Fill in your details:
+    - Email address (pre-filled)
+    - Password (minimum 8 characters)
+    - First name (optional)
+    - Last name (optional)
+    
+    Your role is assigned automatically based on the invitation.
+  </Step>
+</Steps>
+
+### API Example: Validate Invitation Code
+
+```bash Request
+curl -X POST https://api.realtorspractice.com/api/auth/validate-invite \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "A3F1B2"
+  }'
+```
+
+```json Response (Success)
+{
+  "success": true,
+  "data": {
+    "email": "user@company.com",
+    "role": "EDITOR",
+    "firstName": "John",
+    "lastName": "Doe"
+  },
+  "message": "Invitation validated"
+}
+```
+
+```json Response (Error)
+{
+  "success": false,
+  "error": "This invitation code has expired",
+  "message": "Validation failed"
+}
+```
+
+### API Example: Register with Invitation Code
+
+```bash Request
+curl -X POST https://api.realtorspractice.com/api/auth/register-with-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "A3F1B2",
+    "email": "user@company.com",
+    "password": "SecurePassword123!",
+    "firstName": "John",
+    "lastName": "Doe"
+  }'
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "clx1234567890",
+    "email": "user@company.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "EDITOR"
+  },
+  "message": "Account created successfully"
+}
+```
+
+## Signing In
+
+<Steps>
+  <Step title="Go to the login page">
+    Navigate to the Realtors' Practice login page.
+  </Step>
+  
+  <Step title="Enter your credentials">
+    Provide your registered email and password.
+  </Step>
+  
+  <Step title="Access your dashboard">
+    Upon successful authentication, you'll receive a JWT token that's automatically stored and used for subsequent requests.
+  </Step>
+</Steps>
+
+<Warning>
+  JWT tokens expire after a set period. You'll be automatically logged out when your session expires and prompted to sign in again.
+</Warning>
+
+## Managing Your Profile
+
+### View Profile Information
+
+Access your current profile details including role, contact information, and account statistics.
+
+```bash Request
+curl -X GET https://api.realtorspractice.com/api/auth/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "clx1234567890",
+    "email": "user@company.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "EDITOR",
+    "avatarUrl": null,
+    "phone": "+234 803 123 4567",
+    "bio": "Real estate analyst",
+    "company": "Property Solutions Ltd",
+    "lastLoginAt": "2026-03-11T10:30:00Z",
+    "createdAt": "2026-01-15T08:00:00Z"
+  }
+}
+```
+
+<Tip>
+  The system automatically tracks your `lastLoginAt` timestamp and increments your `loginCount` each time you access this endpoint.
+</Tip>
+
+### Update Profile Information
+
+Modify your personal details at any time.
+
+```bash Request
+curl -X PATCH https://api.realtorspractice.com/api/auth/me \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "John",
+    "lastName": "Doe",
+    "phone": "+234 803 123 4567",
+    "bio": "Real estate analyst specializing in Lagos market",
+    "company": "Property Solutions Ltd"
+  }'
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "clx1234567890",
+    "email": "user@company.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "role": "EDITOR",
+    "phone": "+234 803 123 4567",
+    "bio": "Real estate analyst specializing in Lagos market",
+    "company": "Property Solutions Ltd",
+    "lastLoginAt": "2026-03-11T10:30:00Z",
+    "createdAt": "2026-01-15T08:00:00Z"
+  },
+  "message": "Profile updated successfully"
+}
+```
+
+<Note>
+  **Profile Update Limits:**
+  - First name: Maximum 100 characters
+  - Last name: Maximum 100 characters
+  - Phone: Maximum 20 characters
+  - Bio: Maximum 500 characters
+  - Company: Maximum 100 characters
+</Note>
+
+## Admin: Inviting Users
+
+<Warning>
+  Only users with the **Admin** role can invite new users.
+</Warning>
+
+<Steps>
+  <Step title="Navigate to User Management">
+    Go to the Admin panel and select "Invite User".
+  </Step>
+  
+  <Step title="Fill in user details">
+    Provide:
+    - Email address (required)
+    - First name (optional)
+    - Last name (optional)
+    - Role: ADMIN, EDITOR, VIEWER, or API_USER
+  </Step>
+  
+  <Step title="Send invitation">
+    Click "Send Invitation". The system will:
+    - Generate a unique 6-character code
+    - Invalidate any previous unused invitations for this email
+    - Send an email with the invitation code
+    - Set a 24-hour expiration
+  </Step>
+</Steps>
+
+### API Example: Send Invitation
+
+```bash Request
+curl -X POST https://api.realtorspractice.com/api/auth/invite \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newuser@company.com",
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "role": "EDITOR"
+  }'
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "inv_9876543210",
+    "email": "newuser@company.com",
+    "role": "EDITOR",
+    "expiresAt": "2026-03-12T10:30:00Z"
+  },
+  "message": "Invitation sent successfully"
+}
+```
+
+<Tip>
+  If a user already exists with the provided email, the invitation will be rejected with a 400 error.
+</Tip>
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Strong Passwords" icon="lock">
+    Use passwords with at least 8 characters, including uppercase, lowercase, numbers, and symbols.
+  </Card>
+  <Card title="Token Storage" icon="key">
+    JWT tokens are automatically managed. Never share your token with third parties.
+  </Card>
+  <Card title="Regular Reviews" icon="user-check">
+    Admins should regularly review user access and deactivate unused accounts.
+  </Card>
+  <Card title="Role-Based Access" icon="shield-halved">
+    Assign the minimum role needed for each user's responsibilities.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="My invitation code isn't working">
+    Check that:
+    - The code is exactly 6 characters (case-sensitive)
+    - The code hasn't expired (24-hour limit)
+    - The code hasn't been used already
+    - You're entering the email address that received the invitation
+    
+    If issues persist, ask your Admin to send a new invitation.
+  </Accordion>
+  
+  <Accordion title="I'm getting 'Unauthorized' errors">
+    This typically means:
+    - Your JWT token has expired - sign in again
+    - You're not including the token in the `Authorization` header
+    - Your account has been deactivated - contact your Admin
+  </Accordion>
+  
+  <Accordion title="I can't access certain features">
+    Verify your role permissions. Different features require different access levels:
+    - **Viewer**: Read-only access
+    - **Editor**: Can modify content
+    - **Admin**: Full access including user management
+    - **API User**: Programmatic access only
+  </Accordion>
+  
+  <Accordion title="Password reset not working">
+    Password reset is handled through Supabase. Check your email spam folder for the reset link, and ensure the link hasn't expired.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search Filters" icon="filter" href="/guides/search-filters">
+    Learn how to search and filter properties
+  </Card>
+  <Card title="Saved Searches" icon="bookmark" href="/guides/saved-searches">
+    Set up automatic property monitoring
+  </Card>
+  <Card title="Notifications" icon="bell" href="/guides/notifications">
+    Configure your notification preferences
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/authentication">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

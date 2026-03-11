@@ -1,0 +1,456 @@
+---
+title: Backend Development
+description: Express API architecture, Prisma ORM, and backend patterns
+---
+
+The Realtors' Practice backend is a Node.js/Express API server with TypeScript, Prisma ORM, and Socket.io for real-time features.
+
+## Tech Stack
+
+- **Runtime**: Node.js 18+
+- **Framework**: Express 4.18
+- **Language**: TypeScript 5.3
+- **ORM**: Prisma 5.22
+- **Database**: CockroachDB (PostgreSQL-compatible)
+- **Search**: Meilisearch 0.44
+- **Cache**: Redis (via ioredis)
+- **Real-time**: Socket.io 4.8
+- **Auth**: Supabase (verification only)
+- **Email**: Resend 4.0
+- **Validation**: Zod 3.22
+- **Monitoring**: Sentry
+
+## Project Structure
+
+```
+backend/
+├── prisma/
+│   ├── schema.prisma       # Database schema
+│   ├── seed.ts            # Database seeding
+│   └── migrations/        # Migration history
+├── src/
+│   ├── routes/            # API routes
+│   │   ├── *.routes.ts
+│   ├── controllers/       # Request handlers
+│   │   └── *.controller.ts
+│   ├── services/          # Business logic
+│   │   └── *.service.ts
+│   ├── middlewares/       # Express middlewares
+│   │   ├── auth.ts
+│   │   ├── validate.ts
+│   │   └── error.ts
+│   ├── types/             # TypeScript types
+│   ├── utils/             # Utility functions
+│   └── server.ts          # Main server file
+└── dist/                  # Compiled JavaScript
+```
+
+## npm Scripts
+
+<CodeGroup>
+```bash npm
+npm run dev                  # Start dev server with nodemon
+npm run build                # Compile TypeScript
+npm start                    # Start production server
+npm run prisma:generate      # Generate Prisma client
+npm run prisma:push          # Push schema to database
+npm run prisma:studio        # Open Prisma Studio GUI
+npm run prisma:migrate       # Run migrations
+npm run seed                 # Seed database
+```
+
+```bash yarn
+yarn dev                     # Start dev server with nodemon
+yarn build                   # Compile TypeScript
+yarn start                   # Start production server
+yarn prisma:generate         # Generate Prisma client
+yarn prisma:push             # Push schema to database
+yarn prisma:studio           # Open Prisma Studio GUI
+yarn prisma:migrate          # Run migrations
+yarn seed                    # Seed database
+```
+
+```bash pnpm
+pnpm dev                     # Start dev server with nodemon
+pnpm build                   # Compile TypeScript
+pnpm start                   # Start production server
+pnpm prisma:generate         # Generate Prisma client
+pnpm prisma:push             # Push schema to database
+pnpm prisma:studio           # Open Prisma Studio GUI
+pnpm prisma:migrate          # Run migrations
+pnpm seed                    # Seed database
+```
+</CodeGroup>
+
+## Architecture Patterns
+
+### Route → Controller → Service
+
+The backend follows a three-layer architecture:
+
+```
+Route (routing) → Controller (validation) → Service (business logic)
+```
+
+#### 1. Routes
+
+Define API endpoints and attach middleware:
+
+```typescript
+// routes/properties.routes.ts
+import { Router } from 'express';
+import { propertyController } from '../controllers/property.controller';
+import { auth } from '../middlewares/auth';
+import { validate } from '../middlewares/validate';
+import { propertySchema } from '../schemas/property.schema';
+
+const router = Router();
+
+router.get('/', propertyController.getAll);
+router.get('/:id', propertyController.getById);
+router.post('/', auth, validate(propertySchema), propertyController.create);
+router.patch('/:id', auth, validate(propertySchema), propertyController.update);
+router.delete('/:id', auth, propertyController.delete);
+
+export default router;
+```
+
+#### 2. Controllers
+
+Handle HTTP requests and responses:
+
+```typescript
+// controllers/property.controller.ts
+import { Request, Response } from 'express';
+import { propertyService } from '../services/property.service';
+
+export const propertyController = {
+  async getAll(req: Request, res: Response) {
+    try {
+      const filters = req.query;
+      const properties = await propertyService.findMany(filters);
+      res.json({ success: true, data: properties });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  async getById(req: Request, res: Response) {
+    try {
+      const property = await propertyService.findById(req.params.id);
+      if (!property) {
+        return res.status(404).json({ success: false, error: 'Not found' });
+      }
+      res.json({ success: true, data: property });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+  // ...
+};
+```
+
+#### 3. Services
+
+Contain business logic and database operations:
+
+```typescript
+// services/property.service.ts
+import { prisma } from '../lib/prisma';
+import { Property, Prisma } from '@prisma/client';
+
+export const propertyService = {
+  async findMany(filters: any) {
+    const where: Prisma.PropertyWhereInput = {
+      deletedAt: null,
+      status: 'AVAILABLE',
+    };
+
+    if (filters.state) where.state = filters.state;
+    if (filters.minPrice) where.price = { gte: parseFloat(filters.minPrice) };
+    // ... more filters
+
+    return prisma.property.findMany({
+      where,
+      include: { site: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
+  async findById(id: string) {
+    return prisma.property.findUnique({
+      where: { id },
+      include: {
+        site: true,
+        versions: { take: 5, orderBy: { version: 'desc' } },
+        priceHistory: { take: 10, orderBy: { recordedAt: 'desc' } },
+      },
+    });
+  },
+
+  async create(data: Prisma.PropertyCreateInput) {
+    return prisma.property.create({ data });
+  },
+  // ...
+};
+```
+
+### Middleware Stack
+
+Middleware are applied in this order:
+
+```typescript
+// server.ts
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import { auth } from './middlewares/auth';
+import { errorHandler } from './middlewares/error';
+
+const app = express();
+
+// 1. Security
+app.use(helmet());
+
+// 2. CORS
+app.use(cors({ origin: process.env.CORS_ORIGIN }));
+
+// 3. Body parsing
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 4. Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+});
+app.use('/api/', limiter);
+
+// 5. Routes
+app.use('/api/properties', propertyRoutes);
+app.use('/api/scrape', auth, scrapeRoutes);
+
+// 6. Error handler (must be last)
+app.use(errorHandler);
+```
+
+### Standard Response Format
+
+All API responses follow this format:
+
+```typescript
+{
+  success: boolean;
+  data?: any;
+  error?: string;
+  message?: string;
+}
+```
+
+Example responses:
+
+```json
+// Success
+{
+  "success": true,
+  "data": { "id": "...", "title": "..." }
+}
+
+// Error
+{
+  "success": false,
+  "error": "Property not found"
+}
+```
+
+## Prisma Workflow
+
+### 1. Modify Schema
+
+Edit `prisma/schema.prisma` to add or change models.
+
+### 2. Generate Client
+
+After schema changes, regenerate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+### 3. Push to Database
+
+For development, push schema changes directly:
+
+```bash
+npx prisma db push
+```
+
+### 4. Create Migrations (Production)
+
+For production, create migrations:
+
+```bash
+npx prisma migrate dev --name add_new_field
+```
+
+### 5. Run Migrations
+
+On production/staging, run migrations:
+
+```bash
+npx prisma migrate deploy
+```
+
+### 6. View Data with Prisma Studio
+
+```bash
+npx prisma studio
+```
+
+Opens a GUI at `http://localhost:5555` to browse and edit data.
+
+## Authentication
+
+Authentication uses Supabase JWTs verified by the backend:
+
+```typescript
+// middlewares/auth.ts
+import { Request, Response, NextFunction } from 'express';
+import { supabase } from '../lib/supabase';
+
+export async function auth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ success: false, error: 'Invalid token' });
+    }
+
+    // Attach user to request
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+}
+```
+
+## Service-to-Service Auth
+
+For internal API calls (e.g., scraper → backend), use the `X-Internal-Key` header:
+
+```typescript
+// middlewares/internal-auth.ts
+export function internalAuth(req: Request, res: Response, next: NextFunction) {
+  const key = req.headers['x-internal-key'];
+  if (key !== process.env.INTERNAL_API_KEY) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+  next();
+}
+```
+
+## Socket.io Real-time
+
+Socket.io is used for real-time updates:
+
+```typescript
+// server.ts
+import { Server } from 'socket.io';
+
+const io = new Server(server, {
+  cors: { origin: process.env.CORS_ORIGIN },
+});
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+// Emit events from services
+export { io };
+```
+
+```typescript
+// services/property.service.ts
+import { io } from '../server';
+
+export const propertyService = {
+  async update(id: string, data: any) {
+    const property = await prisma.property.update({ where: { id }, data });
+    
+    // Emit real-time update
+    io.emit('property:updated', property);
+    
+    return property;
+  },
+};
+```
+
+## Version Tracking
+
+All property mutations create a `PropertyVersion` record:
+
+```typescript
+import { ChangeSource } from '@prisma/client';
+
+async function updatePropertyWithVersion(
+  propertyId: string,
+  newData: any,
+  changeSource: ChangeSource,
+  userId?: string
+) {
+  const property = await prisma.property.findUnique({ where: { id: propertyId } });
+  
+  // Create version record
+  await prisma.propertyVersion.create({
+    data: {
+      propertyId,
+      version: property.currentVersion + 1,
+      changeSource,
+      changedBy: userId,
+      previousData: property,
+      newData,
+      changedFields: Object.keys(newData),
+    },
+  });
+  
+  // Update property
+  return prisma.property.update({
+    where: { id: propertyId },
+    data: {
+      ...newData,
+      currentVersion: { increment: 1 },
+    },
+  });
+}
+```
+
+## Deployment
+
+The backend is deployed to Render with this build command:
+
+```bash
+npm install && npx prisma generate && npx prisma db push && npm run build
+```
+
+Environment variables must be set in the Render dashboard.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/development/database">
+    Explore the Prisma schema and database structure
+  </Card>
+  <Card title="Scraper Service" icon="spider" href="/development/scraper">
+    Learn about the Python scraping service
+  </Card>
+</CardGroup>

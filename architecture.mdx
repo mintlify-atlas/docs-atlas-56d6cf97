@@ -1,0 +1,716 @@
+---
+title: 'System Architecture'
+description: 'Understanding the Realtors Practice microservices architecture'
+icon: 'diagram-project'
+---
+
+## Overview
+
+Realtors' Practice is built as a distributed microservices architecture, separating concerns across four main services:
+
+1. **Frontend** (Next.js) - User interface and client-side logic
+2. **Backend API** (Node.js/Express) - Business logic and data orchestration
+3. **Scraper Service** (Python/FastAPI) - Web scraping and data extraction
+4. **Database & Search** (CockroachDB + Meilisearch) - Data persistence and search
+
+<Note>
+  All services communicate via REST APIs and WebSocket connections. The scraper operates independently and reports results back to the backend via HTTP callbacks.
+</Note>
+
+## High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        A[Next.js Frontend<br/>React 19 + TypeScript]
+    end
+    
+    subgraph "API Layer"
+        B[Express Backend<br/>Node.js + Prisma]
+        C[Supabase Auth]
+    end
+    
+    subgraph "Scraper Layer"
+        D[Python Scraper<br/>FastAPI + Playwright]
+    end
+    
+    subgraph "Data Layer"
+        E[(CockroachDB<br/>PostgreSQL)]
+        F[Meilisearch<br/>Search Engine]
+        G[Redis<br/>Queue & Cache]
+    end
+    
+    A -->|REST API<br/>Bearer Token| B
+    A -->|WebSocket<br/>Socket.io| B
+    A -->|OAuth| C
+    B -->|Prisma ORM| E
+    B -->|Index Sync| F
+    B -->|HTTP Callback<br/>X-Internal-Key| D
+    D -->|Job Queue| G
+    D -->|Results| B
+    B -->|Session Cache| G
+```
+
+## Service Breakdown
+
+<Tabs>
+  <Tab title="Frontend">
+    ### Frontend Service
+    
+    **Technology Stack:**
+    - Next.js 15 (App Router)
+    - React 19 with TypeScript
+    - Tailwind CSS v4 + shadcn/ui
+    - TanStack Query (React Query)
+    - Zustand (State Management)
+    - Socket.io Client
+    
+    **Deployment:**
+    - Platform: Vercel
+    - URL: `https://realtors-practice-new.vercel.app`
+    - Auto-deploys from `main` branch
+    
+    **Key Features:**
+    
+    <Accordion title="Real-time Updates">
+      The frontend establishes a WebSocket connection to the backend on mount:
+      
+      ```typescript
+      // lib/socket.ts
+      import { io } from 'socket.io-client';
+      
+      const socket = io(process.env.NEXT_PUBLIC_API_URL, {
+        auth: {
+          token: supabase.auth.session()?.access_token
+        }
+      });
+      
+      // Listen for property updates
+      socket.on('property:updated', (data) => {
+        queryClient.invalidateQueries(['properties']);
+      });
+      
+      socket.on('scrape:progress', (progress) => {
+        // Update scrape job UI in real-time
+      });
+      ```
+    </Accordion>
+    
+    <Accordion title="State Management Strategy">
+      - **Server State:** TanStack Query manages API data with automatic caching and revalidation
+      - **Client State:** Zustand stores for UI state (theme, map provider, filters)
+      - **URL State:** Search params for shareable filter states
+      
+      Example custom hook:
+      
+      ```typescript
+      // hooks/useProperties.ts
+      export function useProperties(filters: PropertyFilters) {
+        return useQuery({
+          queryKey: ['properties', filters],
+          queryFn: () => apiClient.get('/properties', { params: filters }),
+          staleTime: 5 * 60 * 1000, // 5 minutes
+          refetchOnWindowFocus: true,
+        });
+      }
+      ```
+    </Accordion>
+    
+    <Accordion title="Map Providers">
+      Supports multiple map providers with a unified interface:
+      
+      ```typescript
+      // lib/map-providers/index.ts
+      interface MapProvider {
+        name: string;
+        initialize(apiKey?: string): void;
+        createMap(container: HTMLElement, options: MapOptions): MapInstance;
+        addMarkers(map: MapInstance, properties: Property[]): void;
+      }
+      
+      // Available providers:
+      // - OSMProvider (OpenStreetMap, free)
+      // - MapboxProvider (requires API key)
+      // - GoogleMapsProvider (requires API key)
+      ```
+    </Accordion>
+  </Tab>
+  
+  <Tab title="Backend API">
+    ### Backend API Service
+    
+    **Technology Stack:**
+    - Node.js 18+ with TypeScript
+    - Express.js web framework
+    - Prisma ORM (CockroachDB)
+    - Socket.io server
+    - Meilisearch SDK
+    - Supabase Admin SDK
+    
+    **Deployment:**
+    - Platform: Render
+    - URL: `https://realtors-practice-new-api.onrender.com`
+    - Environment: Docker container
+    
+    **Architecture Patterns:**
+    
+    <Accordion title="Route → Controller → Service Pattern">
+      ```
+      routes/
+        property.routes.ts     → HTTP route definitions
+      controllers/
+        property.controller.ts → Request/response handling
+      services/
+        property.service.ts    → Business logic
+      ```
+      
+      Example flow:
+      
+      ```typescript
+      // routes/property.routes.ts
+      router.get('/', authenticate, PropertyController.getAll);
+      
+      // controllers/property.controller.ts
+      export class PropertyController {
+        static async getAll(req: Request, res: Response) {
+          try {
+            const filters = PropertyFilters.parse(req.query);
+            const result = await PropertyService.findMany(filters);
+            res.json({ success: true, data: result.data, meta: result.meta });
+          } catch (error) {
+            next(error);
+          }
+        }
+      }
+      
+      // services/property.service.ts
+      export class PropertyService {
+        static async findMany(filters: PropertyFilters) {
+          const properties = await prisma.property.findMany({
+            where: buildWhereClause(filters),
+            take: filters.limit,
+            skip: (filters.page - 1) * filters.limit,
+            orderBy: { [filters.sortBy]: filters.sortOrder },
+          });
+          return { data: properties, meta: { total, totalPages } };
+        }
+      }
+      ```
+    </Accordion>
+    
+    <Accordion title="Authentication Flow">
+      Uses Supabase JWT tokens verified on every request:
+      
+      ```typescript
+      // middlewares/auth.middleware.ts
+      export async function authenticate(req, res, next) {
+        const token = req.headers.authorization?.split(' ')[1];
+        
+        // Verify token with Supabase
+        const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+        
+        if (error) {
+          return res.status(401).json({ error: 'Invalid token' });
+        }
+        
+        // Find or create user in our DB
+        let dbUser = await prisma.user.findUnique({
+          where: { supabaseId: user.id }
+        });
+        
+        if (!dbUser) {
+          dbUser = await prisma.user.create({
+            data: {
+              supabaseId: user.id,
+              email: user.email,
+              role: 'VIEWER'
+            }
+          });
+        }
+        
+        req.user = dbUser;
+        next();
+      }
+      ```
+    </Accordion>
+    
+    <Accordion title="Prisma Schema Highlights">
+      Key models and relationships:
+      
+      ```prisma
+      model Property {
+        id                  String              @id @default(cuid())
+        hash                String              @unique  // For deduplication
+        title               String
+        listingType         ListingType         // SALE, RENT, LEASE, SHORTLET
+        category            PropertyCategory    // RESIDENTIAL, COMMERCIAL, LAND
+        status              PropertyStatus      // AVAILABLE, SOLD, RENTED
+        price               Float?
+        bedrooms            Int?
+        state               String              @default("Lagos")
+        area                String?
+        latitude            Float?
+        longitude           Float?
+        features            String[]            @default([])
+        images              Json?
+        qualityScore        Float?
+        currentVersion      Int                 @default(1)
+        
+        // Relations
+        versions            PropertyVersion[]   // Version history
+        priceHistory        PriceHistory[]     // Price changes over time
+        savedSearchMatches  SavedSearchMatch[] // Matches to saved searches
+        
+        @@index([state, area, listingType, price])
+      }
+      
+      model SavedSearch {
+        id            String    @id @default(cuid())
+        userId        String
+        name          String
+        filters       Json      // Stored filter criteria
+        isActive      Boolean   @default(true)
+        notifyEmail   Boolean   @default(false)
+        notifyInApp   Boolean   @default(true)
+        
+        user          User      @relation(fields: [userId])
+        matches       SavedSearchMatch[]
+      }
+      ```
+    </Accordion>
+    
+    <Accordion title="Meilisearch Integration">
+      Properties are indexed in Meilisearch for fast full-text search:
+      
+      ```typescript
+      // services/search.service.ts
+      const client = new MeiliSearch({
+        host: process.env.MEILISEARCH_URL,
+        apiKey: process.env.MEILISEARCH_KEY
+      });
+      
+      const index = client.index('properties');
+      
+      // Searchable attributes (weighted)
+      await index.updateSearchableAttributes([
+        'title',
+        'description',
+        'area',
+        'estateName',
+        'features'
+      ]);
+      
+      // Filterable attributes
+      await index.updateFilterableAttributes([
+        'listingType',
+        'category',
+        'state',
+        'bedrooms',
+        'price',
+        'qualityScore'
+      ]);
+      
+      // Natural language search
+      const results = await index.search('3 bedroom in Lekki under 5M', {
+        filter: 'listingType = SALE AND state = Lagos',
+        sort: ['price:asc'],
+        limit: 24
+      });
+      ```
+    </Accordion>
+  </Tab>
+  
+  <Tab title="Scraper Service">
+    ### Scraper Service
+    
+    **Technology Stack:**
+    - Python 3.11
+    - FastAPI (REST API)
+    - Playwright (headless browser)
+    - BeautifulSoup4 (HTML parsing)
+    - Celery (task queue)
+    - Redis (queue broker)
+    - Google Gemini (LLM fallback)
+    
+    **Deployment:**
+    - Platform: Render
+    - Instance: Python 3.11 container
+    - Worker: Celery worker process
+    
+    **Scraping Pipeline:**
+    
+    ```python
+    # app.py
+    @app.post("/api/jobs")
+    async def start_job(request: ScrapeJobRequest):
+        """Receives scrape job from backend, queues in Celery"""
+        from tasks import process_job
+        process_job.delay(request.dict())
+        return {"jobId": request.jobId, "status": "STARTED"}
+    ```
+    
+    <Accordion title="Adaptive Fetching">
+      The scraper intelligently chooses between static HTTP requests and headless browser rendering:
+      
+      ```python
+      # engine/adaptive_fetcher.py
+      class AdaptiveFetcher:
+          async def fetch(self, url: str, requires_js: bool = False):
+              if requires_js:
+                  # Use Playwright for JavaScript-heavy sites
+                  return await self._fetch_with_browser(url)
+              else:
+                  # Use requests for static HTML (faster)
+                  return await self._fetch_with_http(url)
+      ```
+    </Accordion>
+    
+    <Accordion title="Universal Extractor">
+      Extracts property data using site-specific selectors with intelligent fallbacks:
+      
+      ```python
+      # extractors/universal_extractor.py
+      class UniversalExtractor:
+          def extract_property(self, html: str, url: str) -> dict:
+              soup = BeautifulSoup(html, "lxml")
+              
+              raw_data = {
+                  "title": self._extract_field(soup, self.selectors.get("title")),
+                  "price_text": self._extract_field(soup, self.selectors.get("price")),
+                  "bedrooms": self._extract_number(soup, self.selectors.get("bedrooms")),
+                  "description": self._extract_field(soup, self.selectors.get("description")),
+                  "location_text": self._extract_field(soup, self.selectors.get("location")),
+                  "images": self._extract_images(soup),
+              }
+              
+              # LLM fallback if crucial data missing
+              if not raw_data.get("price_text") or not raw_data.get("bedrooms"):
+                  raw_data = extract_with_llm(soup.get_text(), raw_data)
+              
+              return raw_data
+      ```
+    </Accordion>
+    
+    <Accordion title="Data Processing Pipeline">
+      Each scraped listing goes through:
+      
+      1. **Extraction** - Pull raw data from HTML
+      2. **NLP Processing** - Detect listing type, parse features
+      3. **Price Parsing** - Extract numeric values and currency
+      4. **Location Parsing** - Extract state, LGA, area
+      5. **Normalization** - Standardize formats and units
+      6. **Validation** - Check required fields and data quality
+      7. **Quality Scoring** - Calculate completeness score (0-100)
+      8. **Deduplication** - Check against existing properties by hash
+      9. **Enrichment** - Geocode addresses, fetch additional data
+      
+      ```python
+      # pipeline/validator.py
+      def validate_property(data: dict) -> dict:
+          required_fields = ['title', 'listingType', 'source']
+          for field in required_fields:
+              if not data.get(field):
+                  raise ValueError(f"Missing required field: {field}")
+          
+          # Calculate quality score
+          score = 0
+          if len(data.get('images', [])) >= 4: score += 25
+          if data.get('description') and len(data['description']) > 100: score += 15
+          if data.get('latitude') and data.get('longitude'): score += 20
+          # ... more criteria
+          
+          data['qualityScore'] = score
+          return data
+      ```
+    </Accordion>
+    
+    <Accordion title="Callback Communication">
+      Reports progress and results back to the backend:
+      
+      ```python
+      # utils/callback.py
+      async def report_progress(job_id: str, processed: int, total: int):
+          await httpx.post(
+              f"{BACKEND_URL}/api/scrape/jobs/{job_id}/progress",
+              headers={"X-Internal-Key": INTERNAL_API_KEY},
+              json={"processed": processed, "total": total}
+          )
+      
+      async def report_results(job_id: str, properties: list, stats: dict):
+          await httpx.post(
+              f"{BACKEND_URL}/api/scrape/jobs/{job_id}/results",
+              headers={"X-Internal-Key": INTERNAL_API_KEY},
+              json={"properties": properties, "stats": stats}
+          )
+      ```
+      
+      The backend then:
+      1. Validates the internal API key
+      2. Saves properties to CockroachDB
+      3. Indexes in Meilisearch
+      4. Broadcasts updates via Socket.io
+    </Accordion>
+  </Tab>
+  
+  <Tab title="Data Layer">
+    ### Database & Search Layer
+    
+    **CockroachDB (PostgreSQL)**
+    
+    - **Type:** Distributed SQL database
+    - **Why:** PostgreSQL-compatible, globally distributed, ACID transactions
+    - **Access:** Via Prisma ORM from backend
+    - **Schema:** See `backend/prisma/schema.prisma`
+    
+    Key features:
+    - Automatic replication and failover
+    - Horizontal scalability
+    - Strong consistency guarantees
+    - Multi-region support (future)
+    
+    **Meilisearch**
+    
+    - **Type:** Fast, typo-tolerant search engine
+    - **Why:** Sub-50ms search responses, natural language queries
+    - **Deployment:** Self-hosted on Render
+    - **Index:** `properties` index with 24 searchable/filterable fields
+    
+    **Redis**
+    
+    - **Type:** In-memory data store
+    - **Use Cases:**
+      - Celery task queue for scraper jobs
+      - Session caching
+      - Rate limiting
+      - Job stop signals
+    
+    **Supabase (Auth Only)**
+    
+    - **Type:** PostgreSQL-based auth service
+    - **Why:** Free tier, OAuth providers, JWT tokens
+    - **Usage:** Authentication only, not for application data
+    - **Features:**
+      - Email/password auth
+      - OAuth (Google, GitHub)
+      - JWT token generation and verification
+      - Row-level security (unused)
+  </Tab>
+</Tabs>
+
+## Communication Patterns
+
+<CardGroup cols={2}>
+  <Card title="REST API" icon="arrows-left-right">
+    **Frontend ↔ Backend**
+    
+    - Protocol: HTTPS
+    - Auth: Bearer tokens (Supabase JWT)
+    - Format: JSON
+    - Base URL: `/api`
+    
+    Example:
+    ```bash
+    GET /api/properties?page=1&limit=24
+    Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+    ```
+  </Card>
+  
+  <Card title="WebSocket" icon="wifi">
+    **Frontend ↔ Backend**
+    
+    - Protocol: Socket.io over WebSocket
+    - Auth: Token in connection handshake
+    - Events: `property:updated`, `scrape:progress`
+    
+    Example:
+    ```typescript
+    socket.on('property:updated', (data) => {
+      console.log('Property updated:', data.propertyId);
+    });
+    ```
+  </Card>
+  
+  <Card title="HTTP Callbacks" icon="arrow-right-to-bracket">
+    **Scraper → Backend**
+    
+    - Protocol: HTTPS POST
+    - Auth: `X-Internal-Key` header
+    - Purpose: Report scrape progress and results
+    
+    Example:
+    ```python
+    POST /api/scrape/jobs/{jobId}/results
+    X-Internal-Key: internal_secret_key_here
+    ```
+  </Card>
+  
+  <Card title="Internal Auth" icon="key">
+    **Backend ↔ Scraper**
+    
+    - Method: Shared secret key
+    - Header: `X-Internal-Key`
+    - Validation: Constant-time comparison
+    
+    ```typescript
+    if (req.headers['x-internal-key'] !== INTERNAL_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Data Flow: Scrape Job Example
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant S as Scraper
+    participant DB as CockroachDB
+    participant MS as Meilisearch
+    
+    U->>F: Click "Start Scrape"
+    F->>B: POST /api/scrape/jobs
+    B->>DB: Create ScrapeJob record
+    B->>S: POST /api/jobs (X-Internal-Key)
+    S->>S: Queue job in Celery
+    S-->>B: 200 OK {jobId, status}
+    B-->>F: Job created
+    F->>F: Connect to Socket.io
+    
+    loop For each site
+        S->>S: Fetch pages with Playwright
+        S->>S: Extract & validate data
+        S->>B: POST /progress (callback)
+        B->>F: socket.emit('scrape:progress')
+        F->>U: Update progress bar
+    end
+    
+    S->>B: POST /results (callback)
+    B->>DB: Bulk insert properties
+    B->>MS: Index properties
+    B->>DB: Update ScrapeJob status
+    B->>F: socket.emit('scrape:complete')
+    F->>U: Show completion notification
+```
+
+## Deployment Architecture
+
+<Accordion title="Production Environment">
+  **Frontend (Vercel)**
+  - Region: Global CDN
+  - Build: Next.js static + SSR
+  - Auto-scaling: Yes
+  - SSL: Automatic (Let's Encrypt)
+  
+  **Backend (Render)**
+  - Region: US-West
+  - Instance: 512MB RAM, 0.5 CPU
+  - Auto-scaling: Manual
+  - SSL: Automatic
+  
+  **Scraper (Render)**
+  - Region: US-West
+  - Instance: 1GB RAM, 1 CPU
+  - Workers: 2 Celery workers
+  - Playwright: Chromium headless
+  
+  **Database (CockroachDB Cloud)**
+  - Region: US-West
+  - Tier: Serverless (pay-per-use)
+  - Backup: Automatic daily
+  
+  **Meilisearch (Render)**
+  - Region: US-West
+  - Instance: 512MB RAM
+  - Persistence: Disk-backed
+</Accordion>
+
+<Accordion title="CI/CD Pipeline">
+  **GitHub Actions** workflows:
+  
+  ```yaml
+  # .github/workflows/deploy-frontend.yml
+  name: Deploy Frontend
+  on:
+    push:
+      branches: [main]
+      paths: ['frontend/**']
+  
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+        - uses: vercel/action@v1
+          with:
+            vercel-token: ${{ secrets.VERCEL_TOKEN }}
+  ```
+  
+  **Backend/Scraper:** Auto-deploy via Render GitHub integration
+</Accordion>
+
+## Security Considerations
+
+- **Authentication:** All API requests require valid Supabase JWT tokens
+- **Authorization:** Role-based access control (VIEWER, EDITOR, ADMIN)
+- **Rate Limiting:** Express rate-limit middleware (200 req/5min for search)
+- **Input Validation:** Zod schemas on all API endpoints
+- **SQL Injection:** Prevented by Prisma ORM (parameterized queries)
+- **XSS:** React auto-escaping + Content Security Policy headers
+- **Service-to-Service:** Internal API key for scraper callbacks
+- **Secrets:** Environment variables, never committed to git
+
+## Performance Optimizations
+
+<CardGroup cols={2}>
+  <Card title="Frontend">
+    - React Query caching (5min stale time)
+    - Next.js Image optimization
+    - Dynamic imports for heavy libraries
+    - Virtual scrolling for long lists
+    - Debounced search input (300ms)
+  </Card>
+  
+  <Card title="Backend">
+    - Database connection pooling
+    - Indexed queries (Prisma)
+    - Meilisearch for search (not DB)
+    - Redis caching for hot data
+    - Batch inserts for scrape results
+  </Card>
+  
+  <Card title="Scraper">
+    - Adaptive fetching (HTTP vs browser)
+    - Concurrent requests (max 5)
+    - Request delays to avoid blocking
+    - HTML snapshot saving for debugging
+    - LLM fallback only when needed
+  </Card>
+  
+  <Card title="Database">
+    - Compound indexes on filter fields
+    - Partial indexes for common queries
+    - Soft deletes (deletedAt column)
+    - JSON fields for flexible data
+    - Separate price history table
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/get-started/quickstart">
+    Get started with your first property search
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Integrate with the REST API
+  </Card>
+  <Card title="Data Model" icon="database" href="/reference/data-model">
+    Deep dive into the database schema
+  </Card>
+  <Card title="Deployment" icon="server" href="/deployment/overview">
+    Deploy your own instance
+  </Card>
+</CardGroup>

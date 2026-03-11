@@ -1,0 +1,432 @@
+---
+title: Interactive Mapping
+description: MapLibre, Mapbox, and Google Maps with clustering, heatmaps, and property markers
+icon: map
+---
+
+Realtors' Practice displays properties on interactive maps with clustering, custom markers, and provider switching.
+
+## Map Providers
+
+Users can choose from three map providers (property-map.tsx:27-58):
+
+<CardGroup cols={3}>
+  <Card title="OpenStreetMap" icon="map" color="#7ebc6f">
+    **Free & default**. Uses MapLibre GL JS with OSM tiles. No API key required.
+  </Card>
+  <Card title="Mapbox" icon="location-dot" color="#4264fb">
+    **Premium styling**. Requires Mapbox API key. Vector tiles with smooth zoom.
+  </Card>
+  <Card title="Google Maps" icon="earth-americas" color="#4285f4">
+    **Familiar UX**. Requires Google Maps API key. Street View integration.
+  </Card>
+</CardGroup>
+
+### Provider Configuration
+
+Map provider preference is stored in user settings:
+
+```typescript
+// hooks/use-map-provider.ts
+const { provider } = useMapProvider();
+// Returns: "osm" | "mapbox" | "google"
+```
+
+<Info>
+If Mapbox or Google Maps is selected but API keys are missing, users see a friendly fallback message (property-map.tsx:38-54).
+</Info>
+
+## Map Component Architecture
+
+The system uses dynamic imports to avoid loading unused map libraries:
+
+```typescript
+// property-map.tsx:9-15
+const OpenStreetMap = dynamic(
+  () => import("./osm-map").then((mod) => mod.OSMMap),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="w-full h-full min-h-[400px] rounded-xl" />,
+  }
+);
+```
+
+<Tip>
+Dynamic imports reduce initial bundle size by ~150KB. Map libraries only load when the map is visible.
+</Tip>
+
+## Property Markers
+
+Each property with coordinates gets a custom marker:
+
+### Marker States
+
+<Tabs>
+  <Tab title="Default">
+    **Blue circle** with white border. Shows property count if clustered.
+  </Tab>
+  
+  <Tab title="Hovered">
+    **Orange circle** (accent color) with pulsing animation.
+  </Tab>
+  
+  <Tab title="Selected">
+    **Large orange marker** with property preview card.
+  </Tab>
+  
+  <Tab title="Clustered">
+    **Blue circle** with count badge. Expands on click.
+  </Tab>
+</Tabs>
+
+### Marker Interaction
+
+```typescript
+// property-map.tsx:19-21
+interface PropertyMapProps {
+  properties: Property[];
+  hoveredId: string | null;
+  onMarkerClick: (id: string) => void;
+}
+```
+
+<Steps>
+  <Step title="User hovers property card">
+    `hoveredId` prop updates → marker changes to orange.
+  </Step>
+  <Step title="User clicks marker">
+    `onMarkerClick(id)` → property detail panel opens.
+  </Step>
+  <Step title="Marker syncs with list">
+    Scrolling to a property in the list pans the map to its marker.
+  </Step>
+</Steps>
+
+## Clustering Algorithm
+
+When properties are close together, markers cluster automatically:
+
+### Cluster Behavior
+
+| Zoom Level | Cluster Radius | Max Properties |
+|------------|----------------|----------------|
+| 1-8 (country) | 80px | 1000+ |
+| 9-12 (state) | 60px | 100-500 |
+| 13-15 (city) | 40px | 10-50 |
+| 16+ (street) | No clustering | Individual markers |
+
+<Info>
+Clusters show the total count in a badge. Clicking a cluster zooms to expand it.
+</Info>
+
+## Map Bounds & Auto-Zoom
+
+The map automatically fits all visible properties:
+
+```typescript
+// Calculate bounds from property coordinates
+const bounds = properties
+  .filter(p => p.latitude && p.longitude)
+  .reduce((acc, p) => acc.extend([p.longitude!, p.latitude!]), new LngLatBounds());
+
+map.fitBounds(bounds, { padding: 50 });
+```
+
+### Zoom Behavior
+
+<Steps>
+  <Step title="Initial load">
+    Map zooms to fit all search results.
+  </Step>
+  <Step title="Filter applied">
+    Map re-fits to show only filtered properties.
+  </Step>
+  <Step title="Single property selected">
+    Map zooms to level 16 (street view).
+  </Step>
+</Steps>
+
+## Geocoding Integration
+
+Properties without coordinates are geocoded during scraping (pipeline/enricher.py):
+
+```python
+all_properties = await enrich_property(all_properties)
+# Adds latitude/longitude via Google Maps Geocoding API
+```
+
+### Geocoding Priority
+
+1. **Scraper extracts coordinates**: If the site provides lat/lng, use them directly.
+2. **Google Maps Geocoding**: If coordinates are missing, geocode `fullAddress`.
+3. **Fallback to area centroid**: If geocoding fails, use the center of the `area` (e.g., "Lekki").
+
+<Warning>
+Properties without coordinates don't appear on the map. Aim for 90%+ geocoding coverage.
+</Warning>
+
+## Map Layers
+
+The map supports multiple overlay layers:
+
+<AccordionGroup>
+  <Accordion title="Property Markers" icon="location-dot" defaultOpen>
+    Default layer. Shows all visible properties as markers or clusters.
+  </Accordion>
+
+  <Accordion title="Heatmap" icon="fire">
+    Density visualization for high-volume areas. Useful for "hot zones" like VI, Lekki, or Ikoyi.
+  </Accordion>
+
+  <Accordion title="Price Heatmap" icon="naira-sign">
+    Color-coded by average price. Red = expensive, Blue = affordable.
+  </Accordion>
+
+  <Accordion title="Boundary Polygons" icon="draw-polygon">
+    Outlines for estates, LGAs, or custom regions.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+Layers are toggled via the map control panel in the top-right corner.
+</Tip>
+
+## Fullscreen Map Mode
+
+Users can expand the map to fullscreen (search/fullscreen-map.tsx):
+
+```tsx
+<button onClick={() => setFullscreen(true)}>
+  <Maximize2 size={18} />
+  Fullscreen Map
+</button>
+```
+
+Fullscreen mode:
+- Hides the property list
+- Shows property cards as popups on marker click
+- Enables drawing tools for area selection
+- Supports GPS location ("Show my location" button)
+
+## Map Controls
+
+### Default Controls
+
+<CardGroup cols={2}>
+  <Card title="Zoom" icon="magnifying-glass">
+    `+` / `-` buttons or scroll wheel.
+  </Card>
+  <Card title="Compass" icon="compass">
+    Reset north orientation. Hidden if map is already north-up.
+  </Card>
+  <Card title="Geolocate" icon="location-crosshairs">
+    Centers map on user's GPS location.
+  </Card>
+  <Card title="Fullscreen" icon="expand">
+    Toggles fullscreen mode.
+  </Card>
+</CardGroup>
+
+### Custom Controls
+
+```typescript
+// Add layer switcher
+map.addControl(new LayerSwitcherControl(), 'top-right');
+
+// Add search box
+map.addControl(new MapSearchControl(), 'top-left');
+```
+
+## Property Popup
+
+Clicking a marker opens a popup with property preview:
+
+```tsx
+<Popup latitude={property.latitude} longitude={property.longitude}>
+  <PropertyPreviewCard property={property} />
+</Popup>
+```
+
+### Popup Content
+
+<Steps>
+  <Step title="Property image">
+    First image from the `images` array.
+  </Step>
+  <Step title="Title & location">
+    Property title and area (e.g., "Lekki Phase 1").
+  </Step>
+  <Step title="Price & key details">
+    Price in orange, bedrooms/bathrooms in gray.
+  </Step>
+  <Step title="View Details button">
+    Opens full property detail panel.
+  </Step>
+</Steps>
+
+## Map Search Box
+
+Users can search for locations directly on the map:
+
+```tsx
+<input 
+  placeholder="Search for area, street, or landmark..."
+  onChange={(e) => handleMapSearch(e.target.value)}
+/>
+```
+
+Search results:
+- Pan map to the selected location
+- Add a temporary "search result" marker
+- Show nearby properties within 2km radius
+
+## Coordinate System
+
+All coordinates use the **WGS 84** standard (EPSG:4326):
+
+```typescript
+// schema.prisma:242-243
+latitude  Float?
+longitude Float?
+```
+
+<Info>
+Latitude is Y-axis (North/South), Longitude is X-axis (East/West). Lagos is approximately `6.5°N, 3.4°E`.
+</Info>
+
+## Performance Optimization
+
+### Marker Clustering
+
+Without clustering, rendering 1000+ markers freezes the browser. Clustering reduces DOM nodes by 90%+.
+
+### Viewport Culling
+
+Only properties within the current map bounds are rendered:
+
+```typescript
+const visibleProperties = properties.filter(p => {
+  if (!p.latitude || !p.longitude) return false;
+  return map.getBounds().contains([p.longitude, p.latitude]);
+});
+```
+
+### Lazy Loading Tiles
+
+Map tiles load on-demand as users pan/zoom. No preloading of hidden areas.
+
+<Tip>
+Use vector tiles (Mapbox/OSM) instead of raster tiles for 60% faster rendering.
+</Tip>
+
+## Map Data Schema
+
+Each property's map data comes from these fields (schema.prisma:233-244):
+
+```prisma
+model Property {
+  // Location text
+  fullAddress   String?
+  locationText  String?
+  estateName    String?
+  area          String?
+  lga           String?
+  state         String? @default("Lagos")
+  
+  // Coordinates
+  latitude      Float?
+  longitude     Float?
+  landmarks     String[] @default([])
+}
+```
+
+### Indexed Coordinates
+
+Coordinate queries use a composite index for fast spatial lookups:
+
+```prisma
+@@index([latitude, longitude])
+```
+
+## Fallback Behavior
+
+If the selected map provider is unavailable:
+
+<Steps>
+  <Step title="Check API key">
+    If Mapbox/Google is selected but `NEXT_PUBLIC_MAPBOX_TOKEN` or `NEXT_PUBLIC_GOOGLE_MAPS_KEY` is missing.
+  </Step>
+  <Step title="Show warning card">
+    Displays provider-specific message (property-map.tsx:38-54).
+  </Step>
+  <Step title="Suggest OSM">
+    Recommends switching to OpenStreetMap in settings.
+  </Step>
+</Steps>
+
+```tsx
+// property-map.tsx:38-45
+return (
+  <div className="...">
+    <h3>Mapbox Integration Required</h3>
+    <p>
+      You've selected Mapbox as your provider, but API keys are required. 
+      Please switch to OpenStreetMap in your preferences or configure 
+      Mapbox in the `.env` settings.
+    </p>
+  </div>
+);
+```
+
+## Area-Based Filtering
+
+Users can draw polygons on the map to filter properties:
+
+<Steps>
+  <Step title="Enable drawing mode">
+    Click "Draw Area" in the map controls.
+  </Step>
+  <Step title="Draw polygon">
+    Click to add vertices, double-click to close.
+  </Step>
+  <Step title="Filter properties">
+    Only properties within the polygon are shown in the list.
+  </Step>
+  <Step title="Save as custom area">
+    Optionally save the polygon as a named area (e.g., "My Target Zone").
+  </Step>
+</Steps>
+
+## Real-Time Updates
+
+When new properties are scraped, the map updates via WebSocket:
+
+```typescript
+// hooks/use-socket.ts
+socket.on("property:created", (property: Property) => {
+  if (property.latitude && property.longitude) {
+    addMarkerToMap(property);
+  }
+});
+```
+
+<Info>
+New markers animate in with a "drop" effect and pulse 3 times.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Property Search" icon="search" href="/features/property-search">
+    Learn how to search for properties on the map.
+  </Card>
+  <Card title="Saved Searches" icon="bookmark" href="/features/saved-searches">
+    Save map areas and filters for instant access.
+  </Card>
+  <Card title="Map Settings" icon="gear" href="/customize/map-settings">
+    Configure default provider, zoom levels, and layers.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/properties">
+    Fetch properties with coordinate filters.
+  </Card>
+</CardGroup>

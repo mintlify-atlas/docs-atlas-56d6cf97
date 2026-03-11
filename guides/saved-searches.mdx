@@ -1,0 +1,512 @@
+---
+title: Saved Searches
+description: Automate property monitoring with saved search criteria and get instant notifications for new matches
+---
+
+## Overview
+
+Saved Searches let you bookmark specific search criteria and automatically monitor the market for new listings that match your requirements. Set it once and receive notifications whenever relevant properties are added to the platform.
+
+## Why Use Saved Searches?
+
+<CardGroup cols={2}>
+  <Card title="Automatic Monitoring" icon="radar">
+    The system checks for new matches continuously, so you never miss opportunities
+  </Card>
+  <Card title="Multi-Channel Notifications" icon="bell">
+    Get alerts via email, in-app notifications, or both
+  </Card>
+  <Card title="Track Market Changes" icon="chart-line">
+    Monitor how many properties match your criteria over time
+  </Card>
+  <Card title="Share Criteria" icon="share">
+    Save multiple searches for different investment strategies or client needs
+  </Card>
+</CardGroup>
+
+## Creating a Saved Search
+
+<Steps>
+  <Step title="Perform a search">
+    Start by searching and filtering properties to find exactly what you're looking for.
+  </Step>
+  
+  <Step title="Click 'Save Search'">
+    Once you're satisfied with your filters, click the "Save Search" button.
+  </Step>
+  
+  <Step title="Name your search">
+    Give it a descriptive name like "3BR Flats in Lekki under ₦80M" or "Commercial Properties - VI".
+    
+    Optionally add a description to note why you're tracking this search.
+  </Step>
+  
+  <Step title="Configure notifications">
+    Choose how you want to be notified:
+    - **In-app notifications**: Alerts within the platform
+    - **Email notifications**: Messages sent to your registered email
+    - Both or neither (for manual checking)
+  </Step>
+</Steps>
+
+### API Example: Create Saved Search
+
+```bash Request
+curl -X POST https://api.realtorspractice.com/api/saved-searches \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "3BR Flats in Lekki under ₦80M",
+    "description": "Investment opportunities for rental portfolio",
+    "filters": {
+      "listingType": "SALE",
+      "category": "RESIDENTIAL",
+      "propertyType": "Flat",
+      "bedrooms": 3,
+      "state": "Lagos",
+      "area": "Lekki",
+      "maxPrice": 80000000
+    },
+    "naturalQuery": "3 bedroom flat lekki",
+    "notifyEmail": true,
+    "notifyInApp": true
+  }'
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "cls1234567890",
+    "userId": "clx1234567890",
+    "name": "3BR Flats in Lekki under ₦80M",
+    "description": "Investment opportunities for rental portfolio",
+    "filters": {
+      "listingType": "SALE",
+      "category": "RESIDENTIAL",
+      "propertyType": "Flat",
+      "bedrooms": 3,
+      "state": "Lagos",
+      "area": "Lekki",
+      "maxPrice": 80000000
+    },
+    "naturalQuery": "3 bedroom flat lekki",
+    "isActive": true,
+    "matchCount": 0,
+    "newSinceCheck": 0,
+    "notifyEmail": true,
+    "notifyInApp": true,
+    "createdAt": "2026-03-11T10:45:00Z",
+    "lastCheckedAt": null
+  },
+  "message": "Saved search created"
+}
+```
+
+<Note>
+  **Supported Filter Fields:**
+  - `listingType`: SALE, RENT, LEASE, SHORTLET
+  - `category`: RESIDENTIAL, COMMERCIAL, LAND, SHORTLET, INDUSTRIAL
+  - `minPrice` / `maxPrice`: Price range in Naira
+  - `bedrooms`: Exact number of bedrooms
+  - `state`: Nigerian state (e.g., Lagos, Abuja)
+  - `area`: Specific neighborhood or district
+  - `features`: Array of feature keywords (e.g., ["Swimming Pool", "Gym"])
+  - `propertyType`: Specific type (e.g., "Flat", "Detached Duplex")
+</Note>
+
+## Managing Your Saved Searches
+
+### View All Saved Searches
+
+Access your complete list of saved searches with match statistics.
+
+```bash Request
+curl -X GET https://api.realtorspractice.com/api/saved-searches \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "cls1234567890",
+      "name": "3BR Flats in Lekki under ₦80M",
+      "description": "Investment opportunities for rental portfolio",
+      "filters": {...},
+      "isActive": true,
+      "matchCount": 12,
+      "newSinceCheck": 3,
+      "lastCheckedAt": "2026-03-11T09:00:00Z",
+      "notifyEmail": true,
+      "notifyInApp": true,
+      "createdAt": "2026-03-01T10:45:00Z",
+      "_count": {
+        "matches": 12
+      }
+    },
+    {
+      "id": "cls9876543210",
+      "name": "Commercial - Victoria Island",
+      "description": null,
+      "filters": {...},
+      "isActive": true,
+      "matchCount": 8,
+      "newSinceCheck": 1,
+      "lastCheckedAt": "2026-03-11T09:00:00Z",
+      "notifyEmail": false,
+      "notifyInApp": true,
+      "createdAt": "2026-02-15T14:20:00Z",
+      "_count": {
+        "matches": 8
+      }
+    }
+  ]
+}
+```
+
+<Tip>
+  The `newSinceCheck` field shows how many matches have been found since you last viewed them. This helps you prioritize which searches to review first.
+</Tip>
+
+### Get Specific Saved Search
+
+```bash Request
+curl -X GET https://api.realtorspractice.com/api/saved-searches/cls1234567890 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Update a Saved Search
+
+Modify filters, notification preferences, or activate/deactivate the search.
+
+```bash Request
+curl -X PATCH https://api.realtorspractice.com/api/saved-searches/cls1234567890 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "3BR Flats in Lekki under ₦85M",
+    "filters": {
+      "listingType": "SALE",
+      "category": "RESIDENTIAL",
+      "propertyType": "Flat",
+      "bedrooms": 3,
+      "state": "Lagos",
+      "area": "Lekki",
+      "maxPrice": 85000000
+    },
+    "notifyEmail": false
+  }'
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "id": "cls1234567890",
+    "name": "3BR Flats in Lekki under ₦85M",
+    "filters": {...},
+    "notifyEmail": false,
+    "notifyInApp": true,
+    "updatedAt": "2026-03-11T11:15:00Z"
+  },
+  "message": "Saved search updated"
+}
+```
+
+### Pause or Resume a Saved Search
+
+Temporarily disable notifications without deleting the search.
+
+```bash Request
+curl -X PATCH https://api.realtorspractice.com/api/saved-searches/cls1234567890 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isActive": false
+  }'
+```
+
+<Note>
+  Inactive searches won't be checked for new matches and won't send notifications. Reactivate by setting `"isActive": true`.
+</Note>
+
+### Delete a Saved Search
+
+```bash Request
+curl -X DELETE https://api.realtorspractice.com/api/saved-searches/cls1234567890 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": null,
+  "message": "Saved search deleted"
+}
+```
+
+<Warning>
+  Deleting a saved search is permanent and will remove all associated match history. Consider pausing the search instead if you might need it later.
+</Warning>
+
+## Viewing Matches
+
+### Get All Matches for a Search
+
+Retrieve properties that match your saved search criteria.
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/saved-searches/cls1234567890/matches?limit=20&offset=0" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "matches": [
+      {
+        "id": "clm1111111111",
+        "savedSearchId": "cls1234567890",
+        "propertyId": "clp2222222222",
+        "matchedAt": "2026-03-11T08:30:00Z",
+        "seen": false,
+        "property": {
+          "id": "clp2222222222",
+          "title": "Modern 3 Bedroom Flat with BQ - Lekki Phase 1",
+          "price": 78000000,
+          "listingType": "SALE",
+          "category": "RESIDENTIAL",
+          "area": "Lekki Phase 1",
+          "state": "Lagos",
+          "bedrooms": 3,
+          "bathrooms": 3,
+          "images": [
+            {"url": "https://...", "caption": "Exterior"}
+          ],
+          "qualityScore": 88.5,
+          "createdAt": "2026-03-11T07:45:00Z"
+        }
+      }
+    ],
+    "total": 12
+  },
+  "page": 1,
+  "limit": 20,
+  "totalPages": 1
+}
+```
+
+<Tip>
+  The `seen` field tracks whether you've viewed this match. Unseen matches are highlighted in the UI.
+</Tip>
+
+### View Only New Matches
+
+Filter to see only properties you haven't reviewed yet.
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/saved-searches/cls1234567890/matches?unseenOnly=true" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### Mark Matches as Seen
+
+Once you've reviewed the matches, mark them as seen to clear the "new" indicator.
+
+```bash Request
+curl -X POST https://api.realtorspractice.com/api/saved-searches/cls1234567890/matches/mark-seen \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": null,
+  "message": "Matches marked as seen"
+}
+```
+
+## How Match Detection Works
+
+Understanding the matching system helps you set up effective saved searches.
+
+<Steps>
+  <Step title="Automatic Checks">
+    A background cron job checks all active saved searches periodically (typically every hour).
+  </Step>
+  
+  <Step title="Filter Application">
+    For each saved search, the system queries the property database applying your filters:
+    - Listing type, category, bedrooms (exact match)
+    - Price range (between min and max)
+    - Location (state exact match, area contains search)
+    - Property type (contains search, case-insensitive)
+    - Features (property must have all specified features)
+  </Step>
+  
+  <Step title="New Properties Only">
+    Only properties created or updated since the last check are evaluated. This prevents duplicate notifications.
+  </Step>
+  
+  <Step title="Match Creation">
+    When a property matches, a `SavedSearchMatch` record is created linking your search to the property.
+  </Step>
+  
+  <Step title="Notification Delivery">
+    Based on your preferences, notifications are sent via:
+    - **Email**: Sent to your registered email address
+    - **In-app**: Appears in your notifications panel
+  </Step>
+</Steps>
+
+<Note>
+  The system avoids duplicate matches. If a property already matched your search, it won't match again even if it's updated.
+</Note>
+
+## Match Statistics
+
+Each saved search tracks important metrics:
+
+- **matchCount**: Total number of properties that have ever matched
+- **newSinceCheck**: Properties matched since you last viewed
+- **lastCheckedAt**: When the system last ran the matching algorithm
+
+```json Example Statistics
+{
+  "id": "cls1234567890",
+  "name": "3BR Flats in Lekki under ₦80M",
+  "matchCount": 47,
+  "newSinceCheck": 5,
+  "lastCheckedAt": "2026-03-11T09:00:00Z"
+}
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Be Specific" icon="bullseye">
+    More specific criteria = more relevant matches. Include bedroom count, area, and price range.
+  </Card>
+  <Card title="Don't Over-Filter" icon="filter">
+    Too many filters might exclude great opportunities. Start broad, then refine.
+  </Card>
+  <Card title="Multiple Searches" icon="layer-group">
+    Create separate searches for different strategies rather than one complex search.
+  </Card>
+  <Card title="Review Regularly" icon="calendar-check">
+    Check your matches at least weekly to stay on top of new opportunities.
+  </Card>
+  <Card title="Update as Needed" icon="arrows-rotate">
+    Market conditions change. Adjust your filters quarterly.
+  </Card>
+  <Card title="Test Notification Settings" icon="bell">
+    Make sure notifications work before relying on them for time-sensitive opportunities.
+  </Card>
+</CardGroup>
+
+## Common Use Cases
+
+<AccordionGroup>
+  <Accordion title="Investment Property Hunting">
+    Create a saved search for:
+    - Specific property type (e.g., 3-bedroom flats)
+    - Target areas with high rental demand
+    - Maximum budget
+    - Features that add value (BQ, parking, security)
+    
+    Enable email notifications to move quickly on new opportunities.
+  </Accordion>
+  
+  <Accordion title="Client Requirements">
+    Real estate agents can create saved searches matching each client's needs:
+    - Save the search with the client's name
+    - Use in-app notifications only
+    - Check matches before contacting the client
+    - Update filters based on client feedback
+  </Accordion>
+  
+  <Accordion title="Market Research">
+    Track market trends by creating searches for:
+    - Specific areas you're researching
+    - Disable all notifications (manual checking)
+    - Review matchCount periodically to see inventory levels
+    - Compare pricing over time
+  </Accordion>
+  
+  <Accordion title="Price Monitoring">
+    Set up searches with tight price ranges to:
+    - Identify undervalued properties
+    - Track when properties drop below your target price
+    - Monitor luxury market activity
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Not receiving notifications">
+    Check that:
+    - The search `isActive` is set to `true`
+    - Your notification preferences (`notifyEmail` or `notifyInApp`) are enabled
+    - Your email address is correct and verified
+    - The search criteria aren't too restrictive (test by broadening filters)
+    - New properties actually match your criteria (check manually)
+  </Accordion>
+  
+  <Accordion title="Too many notifications">
+    Solutions:
+    - Make your filters more specific (add price range, area, features)
+    - Disable email notifications, keep only in-app
+    - Temporarily pause the search with `"isActive": false`
+    - Split into multiple narrower searches
+  </Accordion>
+  
+  <Accordion title="Matches seem incorrect">
+    Remember that:
+    - Area matching uses "contains" logic ("Lekki" matches "Lekki Phase 1")
+    - Property type matching is case-insensitive and partial
+    - Missing filters (like bedrooms) mean "any value is acceptable"
+    
+    Review your filter object and make sure all desired criteria are specified.
+  </Accordion>
+  
+  <Accordion title="Can't update or delete a search">
+    Ensure:
+    - You're authenticated with a valid JWT token
+    - You're using the correct saved search ID
+    - The search belongs to your user account (you can only modify your own searches)
+  </Accordion>
+</AccordionGroup>
+
+## Performance Notes
+
+<Note>
+  **Matching Limits:**
+  - Each check evaluates up to 100 properties maximum per saved search
+  - If your criteria are extremely broad, some matches might be missed
+  - For best results, use specific filters to keep match counts reasonable
+</Note>
+
+<Warning>
+  Saved searches with very broad criteria (e.g., "all properties in Lagos") may impact system performance and produce overwhelming notification volume. Use specific filters whenever possible.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Notifications" icon="bell" href="/guides/notifications">
+    Configure your notification preferences
+  </Card>
+  <Card title="Search Filters" icon="filter" href="/guides/search-filters">
+    Learn about all available filter options
+  </Card>
+  <Card title="Data Explorer" icon="chart-line" href="/guides/data-explorer">
+    Analyze matched properties with data visualizations
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/saved-searches">
+    Complete saved searches API documentation
+  </Card>
+</CardGroup>

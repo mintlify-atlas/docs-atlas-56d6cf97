@@ -1,0 +1,476 @@
+---
+title: Search & Filter Properties
+description: Master advanced search techniques to find exactly what you're looking for in Nigeria's property market
+---
+
+## Overview
+
+Realtors' Practice offers powerful search capabilities powered by **Meilisearch**, combining traditional filters with natural language search. Find properties across Nigeria with precision and speed.
+
+## Quick Search
+
+The fastest way to find properties is using the main search bar.
+
+<Steps>
+  <Step title="Enter your search query">
+    Type keywords, property types, locations, or natural language queries:
+    - "3 bedroom flat in Lekki"
+    - "Commercial property Victoria Island"
+    - "Land for sale Ikoyi under 50 million"
+  </Step>
+  
+  <Step title="Review results">
+    Results appear instantly with highlighted matches. The search indexes:
+    - Property titles
+    - Descriptions
+    - Location details (area, state, landmarks)
+    - Property features
+    - Agent information
+  </Step>
+</Steps>
+
+### API Example: Basic Search
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/search?q=3+bedroom+lekki&limit=20" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "hits": [
+      {
+        "id": "clx1234567890",
+        "title": "Luxury 3 Bedroom Flat with BQ in Lekki Phase 1",
+        "price": 85000000,
+        "listingType": "SALE",
+        "category": "RESIDENTIAL",
+        "propertyType": "Flat",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "area": "Lekki Phase 1",
+        "state": "Lagos",
+        "images": [
+          {"url": "https://...", "caption": "Living room"}
+        ],
+        "qualityScore": 92.5,
+        "createdAt": "2026-03-10T14:20:00Z",
+        "_formatted": {
+          "title": "Luxury <em>3 Bedroom</em> Flat with BQ in <em>Lekki</em> Phase 1"
+        }
+      }
+    ],
+    "nbHits": 142,
+    "facets": {
+      "categoryName": {
+        "RESIDENTIAL": 120,
+        "COMMERCIAL": 15,
+        "LAND": 7
+      },
+      "listingType": {
+        "SALE": 98,
+        "RENT": 44
+      },
+      "bedrooms": {
+        "3": 85,
+        "4": 42,
+        "2": 15
+      },
+      "state": {
+        "Lagos": 142
+      }
+    }
+  },
+  "message": "Search successful"
+}
+```
+
+<Tip>
+  The `_formatted` object shows highlighted search matches. Use this to emphasize matching terms in your UI.
+</Tip>
+
+## Advanced Filters
+
+Refine your search with multiple filters for precise results.
+
+### Available Filters
+
+<AccordionGroup>
+  <Accordion title="Listing Type" icon="tag">
+    - **SALE**: Properties for purchase
+    - **RENT**: Long-term rentals
+    - **LEASE**: Lease agreements
+    - **SHORTLET**: Short-term rentals
+    
+    Filter parameter: `filters=listingType=SALE`
+  </Accordion>
+  
+  <Accordion title="Property Category" icon="building">
+    - **RESIDENTIAL**: Homes and apartments
+    - **COMMERCIAL**: Offices, shops, warehouses
+    - **LAND**: Plots and land parcels
+    - **SHORTLET**: Furnished short-stays
+    - **INDUSTRIAL**: Factories and industrial spaces
+    
+    Filter parameter: `filters=category=RESIDENTIAL`
+  </Accordion>
+  
+  <Accordion title="Bedrooms" icon="bed">
+    Filter by exact number of bedrooms (1-10+).
+    
+    Filter parameter: `filters=bedrooms=3`
+  </Accordion>
+  
+  <Accordion title="Price Range" icon="naira-sign">
+    Set minimum and maximum price in Nigerian Naira.
+    
+    Filter parameters:
+    - Minimum: `filters=price>=50000000`
+    - Maximum: `filters=price<=100000000`
+    - Combined: `filters=price 50000000 TO 100000000`
+  </Accordion>
+  
+  <Accordion title="Location" icon="map-pin">
+    - **State**: Filter by Nigerian state (e.g., Lagos, Abuja)
+    - **Area**: Specific neighborhoods or districts
+    
+    Filter parameters:
+    - State: `filters=state="Lagos"`
+    - Area: `filters=area="Lekki Phase 1"`
+  </Accordion>
+  
+  <Accordion title="Property Type" icon="house">
+    Specific property subtypes like:
+    - Flat / Apartment
+    - Detached Duplex
+    - Semi-Detached
+    - Terrace
+    - Bungalow
+    - Mansion
+    - Office Space
+    - Shop
+    - Warehouse
+    
+    Filter parameter: `filters=propertyType="Detached Duplex"`
+  </Accordion>
+</AccordionGroup>
+
+### API Example: Multi-Filter Search
+
+Combine multiple filters for targeted results.
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/search" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --data-urlencode "q=luxury apartment" \
+  --data-urlencode "filters=listingType=SALE AND bedrooms=3 AND state=Lagos AND price 70000000 TO 120000000" \
+  --data-urlencode "limit=20" \
+  --data-urlencode "offset=0"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "hits": [
+      {
+        "id": "clx9876543210",
+        "title": "Contemporary 3 Bedroom Luxury Apartment - Ikoyi",
+        "price": 95000000,
+        "listingType": "SALE",
+        "category": "RESIDENTIAL",
+        "propertyType": "Flat",
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "toilets": 1,
+        "bq": 1,
+        "area": "Ikoyi",
+        "state": "Lagos",
+        "features": [
+          "Swimming Pool",
+          "Gym",
+          "24/7 Security",
+          "Backup Generator",
+          "Smart Home"
+        ],
+        "images": [{"url": "https://..."}],
+        "qualityScore": 95.2
+      }
+    ],
+    "nbHits": 23,
+    "facets": {
+      "area": {
+        "Ikoyi": 12,
+        "Victoria Island": 8,
+        "Lekki Phase 1": 3
+      }
+    }
+  },
+  "message": "Search successful"
+}
+```
+
+<Note>
+  **Filter Syntax:**
+  - Use `AND` to combine filters: `state=Lagos AND bedrooms=3`
+  - Use `OR` for alternatives: `listingType=SALE OR listingType=RENT`
+  - Use `TO` for ranges: `price 50000000 TO 100000000`
+  - Use quotes for exact matches: `area="Lekki Phase 1"`
+</Note>
+
+## Faceted Search
+
+Facets provide aggregate counts of matching results by category, helping you understand the available inventory.
+
+### Default Facets
+
+By default, the API returns counts for:
+- `categoryName` (RESIDENTIAL, COMMERCIAL, LAND, etc.)
+- `listingType` (SALE, RENT, LEASE, SHORTLET)
+- `bedrooms` (1, 2, 3, 4, 5+)
+- `state` (Lagos, Abuja, Port Harcourt, etc.)
+
+### Custom Facets
+
+Request specific facets to get targeted statistics.
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/search" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --data-urlencode "q=apartment lekki" \
+  --data-urlencode "facets=area,propertyType,bedrooms,price"
+```
+
+```json Response
+{
+  "success": true,
+  "data": {
+    "hits": [...],
+    "nbHits": 89,
+    "facets": {
+      "area": {
+        "Lekki Phase 1": 34,
+        "Lekki Phase 2": 22,
+        "Ikate": 18,
+        "Oniru": 15
+      },
+      "propertyType": {
+        "Flat": 56,
+        "Apartment": 21,
+        "Penthouse": 12
+      },
+      "bedrooms": {
+        "2": 32,
+        "3": 41,
+        "4": 16
+      }
+    }
+  },
+  "message": "Search successful"
+}
+```
+
+<Tip>
+  Use facets to build dynamic filter UIs. Show users the available options and counts before they apply filters.
+</Tip>
+
+## Search Suggestions
+
+Provide autocomplete suggestions as users type for a better search experience.
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/search/suggestions?q=lek&limit=5" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```json Response
+{
+  "success": true,
+  "data": [
+    {
+      "text": "Lekki Phase 1",
+      "type": "area",
+      "count": 247
+    },
+    {
+      "text": "Lekki",
+      "type": "area",
+      "count": 892
+    },
+    {
+      "text": "Lekki Epe Expressway",
+      "type": "landmark",
+      "count": 156
+    }
+  ],
+  "message": "Suggestions fetched"
+}
+```
+
+## Sorting Results
+
+Control the order of search results with sort parameters.
+
+### Available Sort Options
+
+<CardGroup cols={2}>
+  <Card title="Relevance" icon="star">
+    Default sorting by search relevance score.
+    
+    `sort=_relevance:desc`
+  </Card>
+  <Card title="Date Added" icon="clock">
+    Newest or oldest listings first.
+    
+    `sort=createdAt:desc` or `sort=createdAt:asc`
+  </Card>
+  <Card title="Price" icon="naira-sign">
+    Highest to lowest or lowest to highest.
+    
+    `sort=price:desc` or `sort=price:asc`
+  </Card>
+  <Card title="Quality Score" icon="certificate">
+    Best quality listings first.
+    
+    `sort=qualityScore:desc`
+  </Card>
+</CardGroup>
+
+### Multi-Field Sorting
+
+Combine multiple sort criteria for refined ordering.
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/search" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  --data-urlencode "q=flat lagos" \
+  --data-urlencode "sort=qualityScore:desc,price:asc"
+```
+
+<Note>
+  Results are sorted by the first criterion, then ties are broken by subsequent criteria.
+</Note>
+
+## Pagination
+
+Navigate through large result sets efficiently.
+
+### Parameters
+- `limit`: Number of results per page (default: 20, max: 100)
+- `offset`: Starting position (default: 0)
+
+```bash Request
+curl -X GET "https://api.realtorspractice.com/api/search?q=apartment&limit=20&offset=40" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+<Tip>
+  **Pagination Tips:**
+  - For page 1: `offset=0, limit=20`
+  - For page 2: `offset=20, limit=20`
+  - For page 3: `offset=40, limit=20`
+  
+  Formula: `offset = (page - 1) × limit`
+</Tip>
+
+## Search Performance
+
+Realtors' Practice uses Meilisearch for blazing-fast search performance:
+
+<CardGroup cols={3}>
+  <Card title="< 50ms" icon="bolt">
+    Average search response time
+  </Card>
+  <Card title="Typo Tolerant" icon="spell-check">
+    Handles misspellings automatically
+  </Card>
+  <Card title="Real-time" icon="sync">
+    Index updates within seconds
+  </Card>
+</CardGroup>
+
+<Warning>
+  If Meilisearch is temporarily unavailable, the API will return an empty result set with a graceful error message. The platform remains operational, but search functionality will be limited.
+</Warning>
+
+## Search Tips
+
+<Steps>
+  <Step title="Use specific terms">
+    "3 bedroom Lekki" is better than just "house"
+  </Step>
+  
+  <Step title="Combine filters and text search">
+    Filter by location and bedrooms, then search for features like "pool" or "penthouse"
+  </Step>
+  
+  <Step title="Try natural language">
+    The search engine understands queries like "affordable apartments near VI"
+  </Step>
+  
+  <Step title="Use facets to refine">
+    Check facet counts to see what's actually available before applying filters
+  </Step>
+  
+  <Step title="Save frequent searches">
+    Turn repeated searches into [Saved Searches](/guides/saved-searches) for automatic monitoring
+  </Step>
+</Steps>
+
+## Common Search Scenarios
+
+<AccordionGroup>
+  <Accordion title="Find luxury properties in high-end areas">
+    ```bash
+    GET /api/search?q=luxury
+    &filters=state=Lagos AND area IN ["Ikoyi", "Banana Island", "Victoria Island"]
+    &filters=price>=100000000
+    &sort=qualityScore:desc
+    ```
+  </Accordion>
+  
+  <Accordion title="Budget-friendly rentals">
+    ```bash
+    GET /api/search?q=flat
+    &filters=listingType=RENT AND price<=2000000
+    &filters=state=Lagos
+    &sort=price:asc
+    ```
+  </Accordion>
+  
+  <Accordion title="Commercial properties for business">
+    ```bash
+    GET /api/search?q=office space
+    &filters=category=COMMERCIAL
+    &filters=state=Lagos
+    &facets=area,propertyType
+    ```
+  </Accordion>
+  
+  <Accordion title="Family homes with specific features">
+    ```bash
+    GET /api/search?q=detached duplex swimming pool
+    &filters=bedrooms>=4 AND category=RESIDENTIAL
+    &filters=state=Lagos
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Saved Searches" icon="bookmark" href="/guides/saved-searches">
+    Save your filters and get notified of new matches
+  </Card>
+  <Card title="Data Explorer" icon="chart-line" href="/guides/data-explorer">
+    Analyze property market trends and statistics
+  </Card>
+  <Card title="Notifications" icon="bell" href="/guides/notifications">
+    Configure alerts for price drops and new listings
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/search">
+    Complete search API documentation
+  </Card>
+</CardGroup>

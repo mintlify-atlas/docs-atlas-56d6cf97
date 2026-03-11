@@ -1,0 +1,750 @@
+---
+title: "Scrape Jobs"
+description: "Manage web scraping jobs to collect property listings"
+---
+
+## Overview
+
+Scrape jobs orchestrate the collection of property listings from configured sites. Jobs can be triggered manually or scheduled, and provide real-time progress updates via WebSocket.
+
+### Job Types
+
+- **PASSIVE_BULK** - Regular bulk scraping of all listings (lowest priority)
+- **ACTIVE_INTENT** - User-triggered scrape based on search intent (highest priority)
+- **RESCRAPE** - Re-scrape specific properties to update data
+- **SCHEDULED** - Automated scheduled scraping
+
+### Job Status
+
+- **PENDING** - Job created, waiting to be dispatched
+- **RUNNING** - Currently scraping
+- **COMPLETED** - Finished successfully
+- **FAILED** - Encountered critical error
+- **CANCELLED** - Stopped by user or system
+
+---
+
+## Create Scrape Job
+
+<Note>
+Requires **ADMIN** or **EDITOR** role.
+</Note>
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.realtorspractice.com/api/scrape/start \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "siteIds": ["clxx1234567890", "clxx0987654321"],
+    "type": "ACTIVE_INTENT",
+    "maxListingsPerSite": 50,
+    "searchQuery": "3 bedroom apartments in Lekki",
+    "parameters": {
+      "minPrice": 50000000,
+      "maxPrice": 150000000,
+      "location": "Lekki"
+    }
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.realtorspractice.com/api/scrape/start', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    siteIds: ['clxx1234567890', 'clxx0987654321'],
+    type: 'ACTIVE_INTENT',
+    maxListingsPerSite: 50,
+    searchQuery: '3 bedroom apartments in Lekki',
+    parameters: {
+      minPrice: 50000000,
+      maxPrice: 150000000,
+      location: 'Lekki'
+    }
+  })
+});
+
+const { data } = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.realtorspractice.com/api/scrape/start',
+    headers={
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'siteIds': ['clxx1234567890', 'clxx0987654321'],
+        'type': 'ACTIVE_INTENT',
+        'maxListingsPerSite': 50,
+        'searchQuery': '3 bedroom apartments in Lekki',
+        'parameters': {
+            'minPrice': 50000000,
+            'maxPrice': 150000000,
+            'location': 'Lekki'
+        }
+    }
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="siteIds" type="string[]" required>
+  Array of site IDs to scrape. Must be enabled sites.
+</ParamField>
+
+<ParamField body="type" type="string" default="PASSIVE_BULK">
+  Job type. One of: `PASSIVE_BULK`, `ACTIVE_INTENT`, `RESCRAPE`, `SCHEDULED`
+</ParamField>
+
+<ParamField body="maxListingsPerSite" type="number" default={100}>
+  Maximum listings to scrape per site (1-1000)
+</ParamField>
+
+<ParamField body="searchQuery" type="string">
+  Natural language search query for intent-based scraping
+</ParamField>
+
+<ParamField body="parameters" type="object">
+  Custom parameters passed to the scraper (e.g., filters, location constraints)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` for successful requests
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The created scrape job
+  
+  <Expandable title="Job Object">
+    <ResponseField name="id" type="string">
+      Unique job identifier (CUID)
+    </ResponseField>
+    
+    <ResponseField name="type" type="string">
+      Job type (PASSIVE_BULK | ACTIVE_INTENT | RESCRAPE | SCHEDULED)
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Current status (PENDING | RUNNING | COMPLETED | FAILED | CANCELLED)
+    </ResponseField>
+    
+    <ResponseField name="siteIds" type="string[]">
+      Array of site IDs being scraped
+    </ResponseField>
+    
+    <ResponseField name="sites" type="object[]">
+      Array of site objects with `id`, `name`, and `baseUrl`
+    </ResponseField>
+    
+    <ResponseField name="searchQuery" type="string">
+      User search query (if provided)
+    </ResponseField>
+    
+    <ResponseField name="parameters" type="object">
+      Custom scraper parameters
+    </ResponseField>
+    
+    <ResponseField name="totalListings" type="number">
+      Total listings found (updated on completion)
+    </ResponseField>
+    
+    <ResponseField name="newListings" type="number">
+      Number of new listings added
+    </ResponseField>
+    
+    <ResponseField name="updatedListings" type="number">
+      Number of existing listings updated
+    </ResponseField>
+    
+    <ResponseField name="duplicates" type="number">
+      Number of duplicate listings skipped
+    </ResponseField>
+    
+    <ResponseField name="errors" type="number">
+      Number of errors encountered
+    </ResponseField>
+    
+    <ResponseField name="startedAt" type="string">
+      ISO 8601 timestamp when job started
+    </ResponseField>
+    
+    <ResponseField name="completedAt" type="string">
+      ISO 8601 timestamp when job completed
+    </ResponseField>
+    
+    <ResponseField name="durationMs" type="number">
+      Job duration in milliseconds
+    </ResponseField>
+    
+    <ResponseField name="createdById" type="string">
+      User ID who created the job
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when job was created
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "message": "Scrape job started",
+  "data": {
+    "id": "clxy9876543210",
+    "type": "ACTIVE_INTENT",
+    "status": "RUNNING",
+    "siteIds": ["clxx1234567890", "clxx0987654321"],
+    "sites": [
+      {
+        "id": "clxx1234567890",
+        "name": "PropertyPro",
+        "baseUrl": "https://www.propertypro.ng"
+      },
+      {
+        "id": "clxx0987654321",
+        "name": "Nigeria Property Centre",
+        "baseUrl": "https://nigeriapropertycentre.com"
+      }
+    ],
+    "searchQuery": "3 bedroom apartments in Lekki",
+    "parameters": {
+      "minPrice": 50000000,
+      "maxPrice": 150000000,
+      "location": "Lekki"
+    },
+    "totalListings": 0,
+    "newListings": 0,
+    "updatedListings": 0,
+    "duplicates": 0,
+    "errors": 0,
+    "startedAt": "2026-03-11T14:32:00.000Z",
+    "completedAt": null,
+    "durationMs": null,
+    "createdById": "clxu1234567890",
+    "createdAt": "2026-03-11T14:32:00.000Z",
+    "updatedAt": "2026-03-11T14:32:00.000Z"
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## List Scrape Jobs
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.realtorspractice.com/api/scrape/jobs?page=1&limit=20&status=RUNNING" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/scrape/jobs?page=1&limit=20&status=RUNNING',
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data, pagination } = await response.json();
+```
+
+```python Python
+response = requests.get(
+    'https://api.realtorspractice.com/api/scrape/jobs',
+    headers={'Authorization': f'Bearer {token}'},
+    params={'page': 1, 'limit': 20, 'status': 'RUNNING'}
+)
+
+data = response.json()
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="page" type="number" default={1}>
+  Page number (1-indexed)
+</ParamField>
+
+<ParamField query="limit" type="number" default={20}>
+  Items per page (max 100)
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status: `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` for successful requests
+</ResponseField>
+
+<ResponseField name="data" type="object[]">
+  Array of scrape jobs with related data
+  
+  <Expandable title="Job Object">
+    <ResponseField name="_count" type="object">
+      Counters for related entities
+      <Expandable title="Counts">
+        <ResponseField name="logs" type="number">
+          Number of log entries for this job
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="createdBy" type="object">
+      User who created the job
+      <Expandable title="User">
+        <ResponseField name="id" type="string">
+          User ID
+        </ResponseField>
+        <ResponseField name="email" type="string">
+          User email
+        </ResponseField>
+        <ResponseField name="firstName" type="string">
+          User first name
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata
+  
+  <Expandable title="Pagination">
+    <ResponseField name="page" type="number">
+      Current page
+    </ResponseField>
+    <ResponseField name="limit" type="number">
+      Items per page
+    </ResponseField>
+    <ResponseField name="total" type="number">
+      Total number of items
+    </ResponseField>
+    <ResponseField name="totalPages" type="number">
+      Total number of pages
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "clxy9876543210",
+      "type": "ACTIVE_INTENT",
+      "status": "RUNNING",
+      "siteIds": ["clxx1234567890"],
+      "sites": [
+        {
+          "id": "clxx1234567890",
+          "name": "PropertyPro"
+        }
+      ],
+      "searchQuery": "3 bedroom apartments in Lekki",
+      "totalListings": 47,
+      "newListings": 12,
+      "duplicates": 35,
+      "errors": 0,
+      "startedAt": "2026-03-11T14:32:00.000Z",
+      "completedAt": null,
+      "createdBy": {
+        "id": "clxu1234567890",
+        "email": "admin@realtorspractice.com",
+        "firstName": "Admin"
+      },
+      "_count": {
+        "logs": 153
+      },
+      "createdAt": "2026-03-11T14:32:00.000Z",
+      "updatedAt": "2026-03-11T14:35:12.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Get Job Details
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.realtorspractice.com/api/scrape/jobs/clxy9876543210 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/scrape/jobs/clxy9876543210',
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.get(
+    'https://api.realtorspractice.com/api/scrape/jobs/clxy9876543210',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Scrape job ID
+</ParamField>
+
+### Response
+
+Returns the job object with full details including recent logs (last 100 entries).
+
+<ResponseField name="logs" type="object[]">
+  Array of recent log entries (last 100), ordered by timestamp descending
+  
+  <Expandable title="Log Object">
+    <ResponseField name="id" type="string">
+      Log entry ID
+    </ResponseField>
+    <ResponseField name="level" type="string">
+      Log level (info | warning | error)
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      Log message
+    </ResponseField>
+    <ResponseField name="details" type="object">
+      Additional structured data
+    </ResponseField>
+    <ResponseField name="timestamp" type="string">
+      ISO 8601 timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "id": "clxy9876543210",
+    "type": "ACTIVE_INTENT",
+    "status": "COMPLETED",
+    "siteIds": ["clxx1234567890"],
+    "sites": [
+      {
+        "id": "clxx1234567890",
+        "name": "PropertyPro",
+        "baseUrl": "https://www.propertypro.ng"
+      }
+    ],
+    "searchQuery": "3 bedroom apartments in Lekki",
+    "totalListings": 47,
+    "newListings": 12,
+    "updatedListings": 0,
+    "duplicates": 35,
+    "errors": 0,
+    "startedAt": "2026-03-11T14:32:00.000Z",
+    "completedAt": "2026-03-11T14:38:45.000Z",
+    "durationMs": 405000,
+    "createdBy": {
+      "id": "clxu1234567890",
+      "email": "admin@realtorspractice.com",
+      "firstName": "Admin"
+    },
+    "logs": [
+      {
+        "id": "clxy9999999999",
+        "jobId": "clxy9876543210",
+        "level": "info",
+        "message": "Scrape completed successfully",
+        "details": {
+          "totalProcessed": 47,
+          "newListings": 12,
+          "duplicates": 35
+        },
+        "timestamp": "2026-03-11T14:38:45.000Z"
+      },
+      {
+        "id": "clxy9999999998",
+        "jobId": "clxy9876543210",
+        "level": "info",
+        "message": "Processing page 5 of PropertyPro",
+        "details": {
+          "page": 5,
+          "listingsFound": 10
+        },
+        "timestamp": "2026-03-11T14:37:30.000Z"
+      }
+    ],
+    "createdAt": "2026-03-11T14:32:00.000Z",
+    "updatedAt": "2026-03-11T14:38:45.000Z"
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Stop Running Job
+
+<Note>
+Requires **ADMIN** or **EDITOR** role. Can only stop jobs with status `RUNNING` or `PENDING`.
+</Note>
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.realtorspractice.com/api/scrape/jobs/clxy9876543210/stop \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/scrape/jobs/clxy9876543210/stop',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.post(
+    'https://api.realtorspractice.com/api/scrape/jobs/clxy9876543210/stop',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Scrape job ID to stop
+</ParamField>
+
+### Response
+
+Returns the updated job with status `CANCELLED`.
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "message": "Job stopped",
+  "data": {
+    "id": "clxy9876543210",
+    "type": "ACTIVE_INTENT",
+    "status": "CANCELLED",
+    "siteIds": ["clxx1234567890"],
+    "totalListings": 23,
+    "newListings": 5,
+    "duplicates": 18,
+    "errors": 0,
+    "startedAt": "2026-03-11T14:32:00.000Z",
+    "completedAt": "2026-03-11T14:35:00.000Z",
+    "createdAt": "2026-03-11T14:32:00.000Z",
+    "updatedAt": "2026-03-11T14:35:00.000Z"
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Real-Time Updates (WebSocket)
+
+Subscribe to real-time job progress and logs via Socket.io.
+
+### Connect to Scrape Namespace
+
+```javascript WebSocket Client
+import { io } from 'socket.io-client';
+
+const socket = io('https://api.realtorspractice.com/scrape', {
+  path: '/ws',
+  auth: {
+    token: 'YOUR_AUTH_TOKEN'
+  }
+});
+
+// Join a specific job room
+socket.emit('join:job', 'clxy9876543210');
+
+// Listen for progress updates
+socket.on('job:progress', (data) => {
+  console.log('Progress:', data);
+  // {
+  //   jobId: 'clxy9876543210',
+  //   processed: 25,
+  //   total: 50,
+  //   currentSite: 'PropertyPro',
+  //   message: 'Processing page 3...',
+  //   timestamp: '2026-03-11T14:33:00.000Z'
+  // }
+});
+
+// Listen for log entries
+socket.on('job:log', (data) => {
+  console.log('Log:', data);
+  // {
+  //   jobId: 'clxy9876543210',
+  //   level: 'info',
+  //   message: 'Found 10 new listings on page 3',
+  //   details: { page: 3, count: 10 },
+  //   timestamp: '2026-03-11T14:33:05.000Z'
+  // }
+});
+
+// Listen for completion
+socket.on('job:completed', (data) => {
+  console.log('Job completed:', data);
+  // {
+  //   jobId: 'clxy9876543210',
+  //   stats: {
+  //     totalListings: 47,
+  //     newListings: 12,
+  //     duplicates: 35,
+  //     errors: 0
+  //   },
+  //   timestamp: '2026-03-11T14:38:45.000Z'
+  // }
+});
+
+// Listen for errors
+socket.on('job:error', (data) => {
+  console.error('Job failed:', data);
+  // {
+  //   jobId: 'clxy9876543210',
+  //   error: 'Connection timeout to PropertyPro',
+  //   timestamp: '2026-03-11T14:35:00.000Z'
+  // }
+});
+
+// Global job updates (all jobs)
+socket.on('job_update', (data) => {
+  console.log('Job status changed:', data);
+  // { jobId: 'clxy9876543210', status: 'COMPLETED' }
+});
+
+// Leave job room when done
+socket.emit('leave:job', 'clxy9876543210');
+```
+
+### Events
+
+<ParamField body="job:progress" type="event">
+  Progress update for a specific job (requires joining job room)
+  
+  **Payload:**
+  - `jobId` - Job ID
+  - `processed` - Items processed so far
+  - `total` - Total items to process
+  - `currentSite` - Site currently being scraped
+  - `message` - Progress message
+  - `timestamp` - ISO 8601 timestamp
+</ParamField>
+
+<ParamField body="job:log" type="event">
+  New log entry for a specific job (requires joining job room)
+  
+  **Payload:**
+  - `jobId` - Job ID
+  - `level` - Log level (info | warning | error)
+  - `message` - Log message
+  - `details` - Additional structured data
+  - `timestamp` - ISO 8601 timestamp
+</ParamField>
+
+<ParamField body="job:completed" type="event">
+  Job completed successfully (requires joining job room)
+  
+  **Payload:**
+  - `jobId` - Job ID
+  - `stats` - Final statistics object
+  - `timestamp` - ISO 8601 timestamp
+</ParamField>
+
+<ParamField body="job:error" type="event">
+  Job failed with error (requires joining job room)
+  
+  **Payload:**
+  - `jobId` - Job ID
+  - `error` - Error message
+  - `timestamp` - ISO 8601 timestamp
+</ParamField>
+
+<ParamField body="job_update" type="event">
+  Global job status change notification (broadcast to all connected clients)
+  
+  **Payload:**
+  - `jobId` - Job ID
+  - `status` - New status (COMPLETED | FAILED | CANCELLED)
+</ParamField>
+
+<ParamField body="scrape_log" type="event">
+  Global scrape log feed (broadcast to all connected clients)
+  
+  **Payload:**
+  - Same as `job:log`
+</ParamField>
+
+---
+
+## Job Priority
+
+Jobs are dispatched to the scraper with different priorities:
+
+| Type | Priority | Use Case |
+|------|----------|----------|
+| **ACTIVE_INTENT** | 1 (highest) | User-triggered searches requiring immediate results |
+| **RESCRAPE** | 3 | Updating specific properties |
+| **PASSIVE_BULK** | 7 | Background scraping of all listings |
+| **SCHEDULED** | 7 | Automated periodic scraping |
+
+<Tip>
+Use `ACTIVE_INTENT` for user-facing searches to get results quickly. Use `PASSIVE_BULK` for overnight/background data collection.
+</Tip>

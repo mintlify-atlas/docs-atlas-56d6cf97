@@ -1,0 +1,795 @@
+---
+title: "Scraping Sites"
+description: "Manage site configurations for web scraping"
+---
+
+## Overview
+
+Sites represent configured sources for scraping property listings. Each site contains CSS selectors, pagination rules, and metadata required for the scraper to extract data.
+
+<Note>
+Creating and updating sites requires **ADMIN** role. Viewing sites is available to all authenticated users.
+</Note>
+
+---
+
+## List Sites
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.realtorspractice.com/api/sites?page=1&limit=20&enabled=true" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/sites?page=1&limit=20&enabled=true',
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data, pagination } = await response.json();
+```
+
+```python Python
+response = requests.get(
+    'https://api.realtorspractice.com/api/sites',
+    headers={'Authorization': f'Bearer {token}'},
+    params={'page': 1, 'limit': 20, 'enabled': True}
+)
+
+data = response.json()
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="page" type="number" default={1}>
+  Page number (1-indexed)
+</ParamField>
+
+<ParamField query="limit" type="number" default={20}>
+  Items per page (1-200)
+</ParamField>
+
+<ParamField query="enabled" type="boolean">
+  Filter by enabled status (true | false)
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search by name, key, or baseUrl (case-insensitive)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` for successful requests
+</ResponseField>
+
+<ResponseField name="data" type="object[]">
+  Array of site configurations
+  
+  <Expandable title="Site Object">
+    <ResponseField name="id" type="string">
+      Unique site identifier (CUID)
+    </ResponseField>
+    
+    <ResponseField name="key" type="string">
+      Unique lowercase key (e.g., `propertypro`, `jiji-ng`)
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Display name (e.g., "PropertyPro", "Jiji Nigeria")
+    </ResponseField>
+    
+    <ResponseField name="baseUrl" type="string">
+      Base URL of the site
+    </ResponseField>
+    
+    <ResponseField name="enabled" type="boolean">
+      Whether scraping is enabled for this site
+    </ResponseField>
+    
+    <ResponseField name="parser" type="string">
+      Parser type (default: `universal`)
+    </ResponseField>
+    
+    <ResponseField name="listPaths" type="string[]">
+      Array of listing page paths to scrape
+    </ResponseField>
+    
+    <ResponseField name="selectors" type="object">
+      CSS selectors for extracting data from listing cards
+    </ResponseField>
+    
+    <ResponseField name="detailSelectors" type="object">
+      CSS selectors for extracting data from detail pages
+    </ResponseField>
+    
+    <ResponseField name="paginationType" type="string">
+      Pagination strategy: `auto`, `next_button`, `page_number`, `url_param`, `path_segment`, `infinite_scroll`, `load_more`
+    </ResponseField>
+    
+    <ResponseField name="maxPages" type="number">
+      Maximum pages to scrape per path (1-200)
+    </ResponseField>
+    
+    <ResponseField name="requiresBrowser" type="boolean">
+      Whether site requires JavaScript rendering (uses Playwright if true)
+    </ResponseField>
+    
+    <ResponseField name="customHeaders" type="object">
+      Custom HTTP headers for requests
+    </ResponseField>
+    
+    <ResponseField name="lastScrapeAt" type="string">
+      ISO 8601 timestamp of last scrape attempt
+    </ResponseField>
+    
+    <ResponseField name="lastSuccessAt" type="string">
+      ISO 8601 timestamp of last successful scrape
+    </ResponseField>
+    
+    <ResponseField name="failCount" type="number">
+      Consecutive failure count (resets on success)
+    </ResponseField>
+    
+    <ResponseField name="avgListings" type="number">
+      Average number of listings found per scrape
+    </ResponseField>
+    
+    <ResponseField name="healthScore" type="number">
+      Site health score (0-100, decreases by 20 per failure)
+    </ResponseField>
+    
+    <ResponseField name="_count" type="object">
+      Counters for related entities
+      <Expandable title="Counts">
+        <ResponseField name="properties" type="number">
+          Total properties from this site
+        </ResponseField>
+        <ResponseField name="scrapeJobs" type="number">
+          Total scrape jobs for this site
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp when site was created
+    </ResponseField>
+    
+    <ResponseField name="updatedAt" type="string">
+      ISO 8601 timestamp when site was last updated
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "clxx1234567890",
+      "key": "propertypro",
+      "name": "PropertyPro",
+      "baseUrl": "https://www.propertypro.ng",
+      "enabled": true,
+      "parser": "universal",
+      "listPaths": [
+        "/property-for-sale/in/lagos",
+        "/property-for-rent/in/lagos"
+      ],
+      "selectors": {
+        "listing_link": "a.single-room-sale",
+        "title": "h2.listings-property-title, h1.property-title",
+        "price": "h3.listings-price, span.price",
+        "location": "h4.listings-location, address",
+        "bedrooms": "span[title='Bedrooms'], .beds",
+        "bathrooms": "span[title='Bathrooms'], .baths",
+        "toilets": "span[title='Toilets']",
+        "images": "img.property-image::attr(src), img.gallery-image::attr(src)",
+        "description": "div.property-description, div.description",
+        "agentName": "span.agent-name, a.agent-link",
+        "features": "li.feature, ul.amenities li"
+      },
+      "detailSelectors": {
+        "title": "h1.property-title",
+        "price": "span.price",
+        "description": "div.property-description"
+      },
+      "paginationType": "url_param",
+      "maxPages": 10,
+      "requiresBrowser": false,
+      "customHeaders": null,
+      "lastScrapeAt": "2026-03-11T10:00:00.000Z",
+      "lastSuccessAt": "2026-03-11T10:00:00.000Z",
+      "failCount": 0,
+      "avgListings": 234,
+      "healthScore": 100,
+      "_count": {
+        "properties": 2456,
+        "scrapeJobs": 45
+      },
+      "createdAt": "2026-01-15T08:00:00.000Z",
+      "updatedAt": "2026-03-11T10:00:00.000Z"
+    },
+    {
+      "id": "clxx0987654321",
+      "key": "jiji-ng",
+      "name": "Jiji Nigeria",
+      "baseUrl": "https://jiji.ng",
+      "enabled": true,
+      "parser": "universal",
+      "listPaths": ["/lagos/real-estate"],
+      "selectors": {
+        "listing_link": "a[href*='/real-estate/']",
+        "title": "h1.b-advert-title, h3.qa-advert-title",
+        "price": "span.qa-advert-price, div.price",
+        "location": "span.b-advert-info-region, div.location",
+        "bedrooms": "li:contains('Bedrooms')",
+        "bathrooms": "li:contains('Bathrooms')",
+        "images": "img.b-advert-image::attr(src)",
+        "description": "div.b-advert-description",
+        "features": "ul.params li"
+      },
+      "paginationType": "url_param",
+      "maxPages": 5,
+      "requiresBrowser": true,
+      "customHeaders": null,
+      "lastScrapeAt": "2026-03-11T09:30:00.000Z",
+      "lastSuccessAt": "2026-03-11T09:30:00.000Z",
+      "failCount": 0,
+      "avgListings": 156,
+      "healthScore": 100,
+      "_count": {
+        "properties": 1823,
+        "scrapeJobs": 38
+      },
+      "createdAt": "2026-01-15T08:00:00.000Z",
+      "updatedAt": "2026-03-11T09:30:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2,
+    "totalPages": 1
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Get Site by ID
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.realtorspractice.com/api/sites/clxx1234567890 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/sites/clxx1234567890',
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.get(
+    'https://api.realtorspractice.com/api/sites/clxx1234567890',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Site ID
+</ParamField>
+
+### Response
+
+Returns a single site object with the same structure as the list response.
+
+---
+
+## Create Site
+
+<Note>
+Requires **ADMIN** role.
+</Note>
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.realtorspractice.com/api/sites \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key": "buyletlive",
+    "name": "BuyLetLive",
+    "baseUrl": "https://buyletlive.com",
+    "enabled": true,
+    "listPaths": ["/properties/sale", "/properties/rent"],
+    "selectors": {
+      "listing_link": "a[href*=''/property/'']",
+      "title": "h1.property-title",
+      "price": "span.price, div.property-price",
+      "location": "span.location, div.property-location",
+      "bedrooms": "span.beds",
+      "bathrooms": "span.baths",
+      "images": "img.property-image::attr(src)",
+      "description": "div.property-description",
+      "features": "ul.amenities li"
+    },
+    "paginationType": "url_param",
+    "maxPages": 5,
+    "requiresBrowser": true
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.realtorspractice.com/api/sites', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    key: 'buyletlive',
+    name: 'BuyLetLive',
+    baseUrl: 'https://buyletlive.com',
+    enabled: true,
+    listPaths: ['/properties/sale', '/properties/rent'],
+    selectors: {
+      listing_link: "a[href*='/property/']",
+      title: 'h1.property-title',
+      price: 'span.price, div.property-price',
+      location: 'span.location, div.property-location',
+      bedrooms: 'span.beds',
+      bathrooms: 'span.baths',
+      images: 'img.property-image::attr(src)',
+      description: 'div.property-description',
+      features: 'ul.amenities li'
+    },
+    paginationType: 'url_param',
+    maxPages: 5,
+    requiresBrowser: true
+  })
+});
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.post(
+    'https://api.realtorspractice.com/api/sites',
+    headers={
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    },
+    json={
+        'key': 'buyletlive',
+        'name': 'BuyLetLive',
+        'baseUrl': 'https://buyletlive.com',
+        'enabled': True,
+        'listPaths': ['/properties/sale', '/properties/rent'],
+        'selectors': {
+            'listing_link': "a[href*='/property/']",
+            'title': 'h1.property-title',
+            'price': 'span.price, div.property-price',
+            'location': 'span.location, div.property-location',
+            'bedrooms': 'span.beds',
+            'bathrooms': 'span.baths',
+            'images': 'img.property-image::attr(src)',
+            'description': 'div.property-description',
+            'features': 'ul.amenities li'
+        },
+        'paginationType': 'url_param',
+        'maxPages': 5,
+        'requiresBrowser': True
+    }
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Request Body
+
+<ParamField body="key" type="string" required>
+  Unique lowercase key (alphanumeric, hyphens, underscores only)
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Display name (1-200 characters)
+</ParamField>
+
+<ParamField body="baseUrl" type="string" required>
+  Base URL of the site (must be valid URL)
+</ParamField>
+
+<ParamField body="enabled" type="boolean" default={true}>
+  Whether scraping is enabled for this site
+</ParamField>
+
+<ParamField body="parser" type="string" default="universal">
+  Parser type to use
+</ParamField>
+
+<ParamField body="listPaths" type="string[]" default={[]}>
+  Array of listing page paths to scrape (relative to baseUrl)
+</ParamField>
+
+<ParamField body="selectors" type="object">
+  CSS selectors for extracting data from listing cards. Common fields:
+  - `listing_link` - Link to property detail page (required)
+  - `title` - Property title
+  - `price` - Property price
+  - `location` - Location/address
+  - `bedrooms` - Number of bedrooms
+  - `bathrooms` - Number of bathrooms
+  - `toilets` - Number of toilets
+  - `images` - Property images (use `::attr(src)` to extract src attribute)
+  - `description` - Property description
+  - `agentName` - Agent/seller name
+  - `features` - List of features/amenities
+  
+  Use comma-separated selectors for fallbacks (e.g., `"h2.title, h1.property-title"`).
+</ParamField>
+
+<ParamField body="detailSelectors" type="object">
+  CSS selectors for extracting data from property detail pages (optional, uses `selectors` if not provided)
+</ParamField>
+
+<ParamField body="paginationType" type="string" default="auto">
+  Pagination strategy:
+  - `auto` - Automatic detection
+  - `next_button` - Click "Next" button
+  - `page_number` - Click page numbers
+  - `url_param` - Change URL query parameter (e.g., `?page=2`)
+  - `path_segment` - Change URL path (e.g., `/page/2`)
+  - `infinite_scroll` - Scroll to load more
+  - `load_more` - Click "Load More" button
+</ParamField>
+
+<ParamField body="maxPages" type="number" default={30}>
+  Maximum pages to scrape per path (1-200)
+</ParamField>
+
+<ParamField body="requiresBrowser" type="boolean" default={false}>
+  Whether site requires JavaScript rendering. Set to `true` for SPAs or sites with dynamic content.
+</ParamField>
+
+<ParamField body="customHeaders" type="object">
+  Custom HTTP headers to send with requests (e.g., User-Agent, Accept-Language)
+</ParamField>
+
+### Response
+
+Returns the created site object.
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "message": "Site created",
+  "data": {
+    "id": "clxy1111111111",
+    "key": "buyletlive",
+    "name": "BuyLetLive",
+    "baseUrl": "https://buyletlive.com",
+    "enabled": true,
+    "parser": "universal",
+    "listPaths": ["/properties/sale", "/properties/rent"],
+    "selectors": {
+      "listing_link": "a[href*='/property/']",
+      "title": "h1.property-title",
+      "price": "span.price, div.property-price",
+      "location": "span.location, div.property-location",
+      "bedrooms": "span.beds",
+      "bathrooms": "span.baths",
+      "images": "img.property-image::attr(src)",
+      "description": "div.property-description",
+      "features": "ul.amenities li"
+    },
+    "detailSelectors": null,
+    "paginationType": "url_param",
+    "maxPages": 5,
+    "requiresBrowser": true,
+    "customHeaders": null,
+    "lastScrapeAt": null,
+    "lastSuccessAt": null,
+    "failCount": 0,
+    "avgListings": 0,
+    "healthScore": 100,
+    "createdAt": "2026-03-11T15:00:00.000Z",
+    "updatedAt": "2026-03-11T15:00:00.000Z",
+    "deletedAt": null
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Update Site
+
+<Note>
+Requires **ADMIN** role. Cannot change the `key` field.
+</Note>
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.realtorspractice.com/api/sites/clxy1111111111 \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "maxPages": 10,
+    "enabled": true
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/sites/clxy1111111111',
+  {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      maxPages: 10,
+      enabled: true
+    })
+  }
+);
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.put(
+    'https://api.realtorspractice.com/api/sites/clxy1111111111',
+    headers={
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json'
+    },
+    json={'maxPages': 10, 'enabled': True}
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Site ID to update
+</ParamField>
+
+### Request Body
+
+All fields from the create request are supported except `key`. All fields are optional (partial update).
+
+### Response
+
+Returns the updated site object.
+
+---
+
+## Toggle Site Enabled Status
+
+<Note>
+Requires **ADMIN** role.
+</Note>
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH https://api.realtorspractice.com/api/sites/clxy1111111111/toggle \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/sites/clxy1111111111/toggle',
+  {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.patch(
+    'https://api.realtorspractice.com/api/sites/clxy1111111111/toggle',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Site ID to toggle
+</ParamField>
+
+### Response
+
+Returns the updated site object with toggled `enabled` status.
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "message": "Site disabled",
+  "data": {
+    "id": "clxy1111111111",
+    "key": "buyletlive",
+    "name": "BuyLetLive",
+    "enabled": false,
+    "...": "..."
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Delete Site
+
+<Note>
+Requires **ADMIN** role. This performs a soft delete (sets `deletedAt` timestamp). The site can be restored by creating a new site with the same `key`.
+</Note>
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.realtorspractice.com/api/sites/clxy1111111111 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/sites/clxy1111111111',
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+response = requests.delete(
+    'https://api.realtorspractice.com/api/sites/clxy1111111111',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+result = response.json()
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Site ID to delete
+</ParamField>
+
+### Response
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "message": "Site deleted",
+  "data": null
+}
+```
+</ResponseExample>
+
+---
+
+## Selector Configuration Guide
+
+### Basic Selectors
+
+Use standard CSS selectors to target elements:
+
+```json
+{
+  "title": "h1.property-title",
+  "price": "span.price",
+  "location": "address.location"
+}
+```
+
+### Fallback Selectors
+
+Use comma-separated selectors to provide fallbacks:
+
+```json
+{
+  "title": "h2.listings-property-title, h1.property-title, .title",
+  "price": "h3.listings-price, span.price, .property-price"
+}
+```
+
+### Extracting Attributes
+
+Use `::attr(attribute_name)` to extract attribute values:
+
+```json
+{
+  "images": "img.property-image::attr(src), img.gallery-image::attr(data-src)",
+  "listing_link": "a.property-link::attr(href)"
+}
+```
+
+### Text Content Matching
+
+Use `:contains()` for elements with specific text:
+
+```json
+{
+  "bedrooms": "li:contains('Bedrooms'), span[title='Bedrooms']",
+  "bathrooms": "li:contains('Bathrooms'), span.baths"
+}
+```
+
+### List Extraction
+
+For lists (features, amenities), use a selector that matches multiple elements:
+
+```json
+{
+  "features": "li.feature, ul.amenities li, div.features span"
+}
+```
+
+<Tip>
+Test your selectors in the browser DevTools console using `document.querySelectorAll("your-selector")` before adding them to the site configuration.
+</Tip>
+
+---
+
+## Site Health Monitoring
+
+Each site tracks health metrics automatically:
+
+- **healthScore** - Starts at 100, decreases by 20 per consecutive failure, resets to 100 on success
+- **failCount** - Consecutive failures, resets to 0 on success
+- **lastScrapeAt** - Timestamp of last scrape attempt
+- **lastSuccessAt** - Timestamp of last successful scrape
+- **avgListings** - Average listings found per successful scrape
+
+<Warning>
+Sites with `healthScore < 40` or `failCount >= 3` should be investigated for selector changes or site downtime.
+</Warning>

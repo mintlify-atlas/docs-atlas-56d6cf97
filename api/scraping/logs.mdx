@@ -1,0 +1,477 @@
+---
+title: "Scrape Logs"
+description: "Query and monitor scraping logs"
+---
+
+## Overview
+
+Scrape logs provide detailed activity tracking for all scraping operations. Each log entry contains a severity level, message, and optional structured metadata.
+
+### Log Levels
+
+- **info** - Normal operation events (e.g., "Started scraping PropertyPro")
+- **warning** - Non-critical issues (e.g., "Missing price on listing, skipping")
+- **error** - Critical failures (e.g., "Site returned 503, retrying...")
+
+---
+
+## List Scrape Logs
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.realtorspractice.com/api/scrape/logs?page=1&limit=25&level=error&jobId=clxy9876543210" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/scrape/logs?' + new URLSearchParams({
+    page: 1,
+    limit: 25,
+    level: 'error',
+    jobId: 'clxy9876543210'
+  }),
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data, pagination } = await response.json();
+```
+
+```python Python
+response = requests.get(
+    'https://api.realtorspractice.com/api/scrape/logs',
+    headers={'Authorization': f'Bearer {token}'},
+    params={
+        'page': 1,
+        'limit': 25,
+        'level': 'error',
+        'jobId': 'clxy9876543210'
+    }
+)
+
+data = response.json()
+```
+</CodeGroup>
+
+### Query Parameters
+
+<ParamField query="page" type="number" default={1}>
+  Page number (1-indexed)
+</ParamField>
+
+<ParamField query="limit" type="number" default={25}>
+  Items per page (max 100)
+</ParamField>
+
+<ParamField query="jobId" type="string">
+  Filter by specific job ID
+</ParamField>
+
+<ParamField query="siteId" type="string">
+  Filter by specific site ID
+</ParamField>
+
+<ParamField query="level" type="string">
+  Filter by log level: `info`, `warning`, or `error`
+</ParamField>
+
+<ParamField query="from" type="string">
+  Filter logs from this timestamp (ISO 8601 format)
+</ParamField>
+
+<ParamField query="to" type="string">
+  Filter logs until this timestamp (ISO 8601 format)
+</ParamField>
+
+<ParamField query="search" type="string">
+  Search log messages (case-insensitive substring match)
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` for successful requests
+</ResponseField>
+
+<ResponseField name="data" type="object[]">
+  Array of log entries, ordered by timestamp descending (newest first)
+  
+  <Expandable title="Log Object">
+    <ResponseField name="id" type="string">
+      Unique log entry identifier (CUID)
+    </ResponseField>
+    
+    <ResponseField name="jobId" type="string">
+      ID of the scrape job this log belongs to
+    </ResponseField>
+    
+    <ResponseField name="job" type="object">
+      Related job information
+      <Expandable title="Job Info">
+        <ResponseField name="id" type="string">
+          Job ID
+        </ResponseField>
+        <ResponseField name="status" type="string">
+          Job status
+        </ResponseField>
+        <ResponseField name="type" type="string">
+          Job type
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="siteId" type="string">
+      ID of the site being scraped (if applicable)
+    </ResponseField>
+    
+    <ResponseField name="level" type="string">
+      Log severity level (info | warning | error)
+    </ResponseField>
+    
+    <ResponseField name="message" type="string">
+      Human-readable log message
+    </ResponseField>
+    
+    <ResponseField name="details" type="object">
+      Additional structured metadata (e.g., page number, listing count, error details)
+    </ResponseField>
+    
+    <ResponseField name="timestamp" type="string">
+      ISO 8601 timestamp when log was created
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata
+  
+  <Expandable title="Pagination">
+    <ResponseField name="page" type="number">
+      Current page
+    </ResponseField>
+    <ResponseField name="limit" type="number">
+      Items per page
+    </ResponseField>
+    <ResponseField name="total" type="number">
+      Total number of items
+    </ResponseField>
+    <ResponseField name="totalPages" type="number">
+      Total number of pages
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": [
+    {
+      "id": "clxy9999999999",
+      "jobId": "clxy9876543210",
+      "job": {
+        "id": "clxy9876543210",
+        "status": "COMPLETED",
+        "type": "ACTIVE_INTENT"
+      },
+      "siteId": "clxx1234567890",
+      "level": "info",
+      "message": "Scrape completed successfully",
+      "details": {
+        "totalProcessed": 47,
+        "newListings": 12,
+        "duplicates": 35,
+        "duration": "6m 45s"
+      },
+      "timestamp": "2026-03-11T14:38:45.000Z"
+    },
+    {
+      "id": "clxy9999999998",
+      "jobId": "clxy9876543210",
+      "job": {
+        "id": "clxy9876543210",
+        "status": "RUNNING",
+        "type": "ACTIVE_INTENT"
+      },
+      "siteId": "clxx1234567890",
+      "level": "info",
+      "message": "Processing page 5 of PropertyPro",
+      "details": {
+        "page": 5,
+        "listingsFound": 10,
+        "newListings": 3,
+        "duplicates": 7
+      },
+      "timestamp": "2026-03-11T14:37:30.000Z"
+    },
+    {
+      "id": "clxy9999999997",
+      "jobId": "clxy9876543210",
+      "job": {
+        "id": "clxy9876543210",
+        "status": "RUNNING",
+        "type": "ACTIVE_INTENT"
+      },
+      "siteId": "clxx1234567890",
+      "level": "warning",
+      "message": "Listing missing price field, using default",
+      "details": {
+        "listingUrl": "https://www.propertypro.ng/property/12345",
+        "field": "price",
+        "selector": "span.price, h3.listings-price"
+      },
+      "timestamp": "2026-03-11T14:36:15.000Z"
+    },
+    {
+      "id": "clxy9999999996",
+      "jobId": "clxy9876543210",
+      "job": {
+        "id": "clxy9876543210",
+        "status": "RUNNING",
+        "type": "ACTIVE_INTENT"
+      },
+      "siteId": "clxx1234567890",
+      "level": "error",
+      "message": "Failed to extract data from listing",
+      "details": {
+        "listingUrl": "https://www.propertypro.ng/property/67890",
+        "error": "Selector 'h1.property-title' returned no results",
+        "retrying": false
+      },
+      "timestamp": "2026-03-11T14:34:20.000Z"
+    },
+    {
+      "id": "clxy9999999995",
+      "jobId": "clxy9876543210",
+      "job": {
+        "id": "clxy9876543210",
+        "status": "RUNNING",
+        "type": "ACTIVE_INTENT"
+      },
+      "siteId": "clxx1234567890",
+      "level": "info",
+      "message": "Started scraping PropertyPro",
+      "details": {
+        "baseUrl": "https://www.propertypro.ng",
+        "listPaths": ["/property-for-sale/in/lagos"],
+        "maxPages": 10,
+        "requiresBrowser": false
+      },
+      "timestamp": "2026-03-11T14:32:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 5,
+    "totalPages": 1
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Get Single Log Entry
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.realtorspractice.com/api/scrape/logs/clxy9999999999 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/scrape/logs/clxy9999999999',
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const { data } = await response.json();
+```
+
+```python Python
+response = requests.get(
+    'https://api.realtorspractice.com/api/scrape/logs/clxy9999999999',
+    headers={'Authorization': f'Bearer {token}'}
+)
+
+data = response.json()['data']
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  Log entry ID
+</ParamField>
+
+### Response
+
+Returns a single log entry with full job details.
+
+<ResponseExample>
+```json Example Response
+{
+  "success": true,
+  "data": {
+    "id": "clxy9999999999",
+    "jobId": "clxy9876543210",
+    "job": {
+      "id": "clxy9876543210",
+      "status": "COMPLETED",
+      "type": "ACTIVE_INTENT",
+      "siteIds": ["clxx1234567890"],
+      "startedAt": "2026-03-11T14:32:00.000Z",
+      "completedAt": "2026-03-11T14:38:45.000Z",
+      "totalListings": 47,
+      "errors": 1
+    },
+    "siteId": "clxx1234567890",
+    "level": "info",
+    "message": "Scrape completed successfully",
+    "details": {
+      "totalProcessed": 47,
+      "newListings": 12,
+      "duplicates": 35,
+      "duration": "6m 45s"
+    },
+    "timestamp": "2026-03-11T14:38:45.000Z"
+  }
+}
+```
+</ResponseExample>
+
+---
+
+## Real-Time Log Streaming
+
+Logs are broadcast in real-time via WebSocket. See [Scrape Jobs - Real-Time Updates](/api/scraping/jobs#real-time-updates-websocket) for WebSocket connection details.
+
+### Listen for Logs
+
+```javascript WebSocket Example
+import { io } from 'socket.io-client';
+
+const socket = io('https://api.realtorspractice.com/scrape', {
+  path: '/ws',
+  auth: { token: 'YOUR_AUTH_TOKEN' }
+});
+
+// Join a specific job room to receive logs for that job
+socket.emit('join:job', 'clxy9876543210');
+
+// Listen for job-specific logs
+socket.on('job:log', (log) => {
+  console.log(`[${log.level.toUpperCase()}] ${log.message}`);
+  if (log.details) {
+    console.log('Details:', log.details);
+  }
+});
+
+// Listen for global scrape logs (all jobs)
+socket.on('scrape_log', (log) => {
+  console.log(`[Global] [${log.level.toUpperCase()}] ${log.message}`);
+});
+
+// Example log payload:
+// {
+//   jobId: 'clxy9876543210',
+//   level: 'info',
+//   message: 'Processing page 5 of PropertyPro',
+//   details: { page: 5, listingsFound: 10 },
+//   timestamp: '2026-03-11T14:37:30.000Z'
+// }
+```
+
+---
+
+## Common Log Messages
+
+### Info Level
+
+| Message | Details | Description |
+|---------|---------|-------------|
+| Started scraping {siteName} | `baseUrl`, `listPaths`, `maxPages` | Scraping started for a site |
+| Processing page {N} of {siteName} | `page`, `listingsFound` | Currently processing a pagination page |
+| Found {N} new listings on page {M} | `page`, `count`, `newListings`, `duplicates` | Successfully extracted listings |
+| Scrape completed successfully | `totalProcessed`, `newListings`, `duplicates`, `duration` | Job finished successfully |
+| Property saved: {title} | `propertyId`, `hash`, `isNew` | Individual property saved to database |
+
+### Warning Level
+
+| Message | Details | Description |
+|---------|---------|-------------|
+| Listing missing {field} field, using default | `listingUrl`, `field`, `selector` | Required field extraction failed, using fallback |
+| Duplicate listing detected, skipping | `listingUrl`, `hash`, `existingId` | Listing already exists in database |
+| Rate limit approaching, slowing down | `currentRate`, `maxRate` | Throttling requests to avoid blocking |
+| Invalid image URL, skipping | `url`, `listingUrl` | Image URL validation failed |
+
+### Error Level
+
+| Message | Details | Description |
+|---------|---------|-------------|
+| Failed to extract data from listing | `listingUrl`, `error`, `retrying` | Selector failed to extract data |
+| Site returned {statusCode}, retrying... | `statusCode`, `url`, `attempt`, `maxAttempts` | HTTP error, will retry |
+| Connection timeout to {siteName} | `baseUrl`, `timeout` | Network timeout |
+| Browser automation failed | `error`, `url`, `screenshot` | Playwright/browser error |
+| Parser error: {error} | `error`, `listingUrl`, `stackTrace` | Code error in parser |
+
+---
+
+## Filtering Examples
+
+### Get all errors from the last hour
+
+```bash
+curl -X GET "https://api.realtorspractice.com/api/scrape/logs?level=error&from=2026-03-11T14:00:00Z" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Search for logs mentioning "timeout"
+
+```bash
+curl -X GET "https://api.realtorspractice.com/api/scrape/logs?search=timeout" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get logs for a specific site during a time range
+
+```bash
+curl -X GET "https://api.realtorspractice.com/api/scrape/logs?siteId=clxx1234567890&from=2026-03-11T00:00:00Z&to=2026-03-11T23:59:59Z" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Monitor a running job's logs
+
+```bash
+curl -X GET "https://api.realtorspractice.com/api/scrape/logs?jobId=clxy9876543210&limit=100" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+<Tip>
+Combine multiple filters for precise queries. For example, `?jobId=xxx&level=error&search=timeout` will show only timeout errors for a specific job.
+</Tip>
+
+---
+
+## Log Retention
+
+Logs are retained according to the following policy:
+
+- **Info logs**: 30 days
+- **Warning logs**: 90 days
+- **Error logs**: 180 days
+
+Completed job logs are retained for 90 days after job completion. Failed job logs are retained for 180 days.
+
+<Warning>
+Logs older than the retention period are automatically deleted and cannot be recovered.
+</Warning>

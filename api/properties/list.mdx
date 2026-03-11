@@ -1,0 +1,812 @@
+---
+title: "List Properties"
+description: "Retrieve a paginated list of properties with filtering, sorting, and search"
+---
+
+## Endpoint
+
+```
+GET /api/properties
+```
+
+## Authentication
+
+This endpoint requires authentication. All authenticated users (Viewer, Editor, Admin) can access this endpoint.
+
+**Headers:**
+- `Authorization: Bearer <token>` - JWT token from Supabase authentication
+
+## Query Parameters
+
+### Pagination
+
+<ParamField query="page" type="number" default="1">
+  Page number for pagination (minimum: 1)
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of results per page (minimum: 1, maximum: 100)
+</ParamField>
+
+### Sorting
+
+<ParamField query="sortBy" type="string" default="createdAt">
+  Field to sort by. Options:
+  - `createdAt` - Sort by creation date
+  - `updatedAt` - Sort by last update
+  - `price` - Sort by property price
+  - `qualityScore` - Sort by quality score
+  - `bedrooms` - Sort by number of bedrooms
+  - `daysOnMarket` - Sort by days on market
+</ParamField>
+
+<ParamField query="sortOrder" type="string" default="desc">
+  Sort order: `asc` or `desc`
+</ParamField>
+
+### Filters
+
+<ParamField query="listingType" type="string | array">
+  Filter by listing type(s). Can be a single value or array. Options:
+  - `SALE`
+  - `RENT`
+  - `LEASE`
+  - `SHORTLET`
+</ParamField>
+
+<ParamField query="category" type="string | array">
+  Filter by property category. Can be a single value or array. Options:
+  - `RESIDENTIAL`
+  - `COMMERCIAL`
+  - `LAND`
+  - `SHORTLET`
+  - `INDUSTRIAL`
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by property status. Options:
+  - `AVAILABLE`
+  - `SOLD`
+  - `RENTED`
+  - `UNDER_OFFER`
+  - `WITHDRAWN`
+  - `EXPIRED`
+</ParamField>
+
+<ParamField query="verificationStatus" type="string">
+  Filter by verification status. Options:
+  - `UNVERIFIED`
+  - `VERIFIED`
+  - `FLAGGED`
+  - `REJECTED`
+</ParamField>
+
+<ParamField query="minPrice" type="number">
+  Minimum price filter (minimum: 0)
+</ParamField>
+
+<ParamField query="maxPrice" type="number">
+  Maximum price filter (minimum: 0)
+</ParamField>
+
+<ParamField query="minBedrooms" type="number">
+  Minimum number of bedrooms
+</ParamField>
+
+<ParamField query="maxBedrooms" type="number">
+  Maximum number of bedrooms
+</ParamField>
+
+<ParamField query="minBathrooms" type="number">
+  Minimum number of bathrooms
+</ParamField>
+
+<ParamField query="state" type="string">
+  Filter by Nigerian state (e.g., "Lagos")
+</ParamField>
+
+<ParamField query="area" type="string | array">
+  Filter by area(s). Can be a single value or array. Case-insensitive search.
+</ParamField>
+
+<ParamField query="lga" type="string">
+  Filter by Local Government Area. Case-insensitive search.
+</ParamField>
+
+<ParamField query="siteId" type="string">
+  Filter by source site ID
+</ParamField>
+
+<ParamField query="propertyType" type="string">
+  Filter by property type (e.g., "Detached Duplex", "Flat / Apartment"). Case-insensitive search.
+</ParamField>
+
+<ParamField query="furnishing" type="string">
+  Filter by furnishing status. Options:
+  - `FURNISHED`
+  - `SEMI_FURNISHED`
+  - `UNFURNISHED`
+  - `UNKNOWN`
+</ParamField>
+
+<ParamField query="isPremium" type="boolean">
+  Filter premium properties only
+</ParamField>
+
+<ParamField query="isFeatured" type="boolean">
+  Filter featured properties only
+</ParamField>
+
+<ParamField query="minQualityScore" type="number">
+  Minimum quality score (0-100)
+</ParamField>
+
+<ParamField query="search" type="string">
+  Full-text search across title, description, location, area, and agent name
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Indicates if the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of property objects
+  
+  <ResponseField name="id" type="string">
+    Unique property identifier (CUID)
+  </ResponseField>
+  
+  <ResponseField name="hash" type="string">
+    Unique hash for duplicate detection
+  </ResponseField>
+  
+  <ResponseField name="title" type="string">
+    Property listing title
+  </ResponseField>
+  
+  <ResponseField name="listingUrl" type="string">
+    Original source listing URL
+  </ResponseField>
+  
+  <ResponseField name="source" type="string">
+    Source identifier
+  </ResponseField>
+  
+  <ResponseField name="siteId" type="string">
+    Reference to source site
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Property status: AVAILABLE, SOLD, RENTED, UNDER_OFFER, WITHDRAWN, EXPIRED
+  </ResponseField>
+  
+  <ResponseField name="verificationStatus" type="string">
+    Verification status: UNVERIFIED, VERIFIED, FLAGGED, REJECTED
+  </ResponseField>
+  
+  <ResponseField name="listingType" type="string">
+    Listing type: SALE, RENT, LEASE, SHORTLET
+  </ResponseField>
+  
+  <ResponseField name="category" type="string">
+    Property category: RESIDENTIAL, COMMERCIAL, LAND, SHORTLET, INDUSTRIAL
+  </ResponseField>
+  
+  <ResponseField name="propertyType" type="string | null">
+    Specific property type (e.g., "Detached Duplex")
+  </ResponseField>
+  
+  <ResponseField name="propertySubtype" type="string | null">
+    Property subtype
+  </ResponseField>
+  
+  <ResponseField name="bedrooms" type="number | null">
+    Number of bedrooms
+  </ResponseField>
+  
+  <ResponseField name="bathrooms" type="number | null">
+    Number of bathrooms
+  </ResponseField>
+  
+  <ResponseField name="toilets" type="number | null">
+    Number of toilets
+  </ResponseField>
+  
+  <ResponseField name="bq" type="number | null">
+    Number of boys quarters
+  </ResponseField>
+  
+  <ResponseField name="landSize" type="string | null">
+    Land size as text
+  </ResponseField>
+  
+  <ResponseField name="landSizeSqm" type="number | null">
+    Land size in square meters
+  </ResponseField>
+  
+  <ResponseField name="buildingSize" type="string | null">
+    Building size as text
+  </ResponseField>
+  
+  <ResponseField name="buildingSizeSqm" type="number | null">
+    Building size in square meters
+  </ResponseField>
+  
+  <ResponseField name="plotDimensions" type="string | null">
+    Plot dimensions
+  </ResponseField>
+  
+  <ResponseField name="yearBuilt" type="number | null">
+    Year property was built
+  </ResponseField>
+  
+  <ResponseField name="renovationYear" type="number | null">
+    Year of last renovation
+  </ResponseField>
+  
+  <ResponseField name="furnishing" type="string">
+    Furnishing status: FURNISHED, SEMI_FURNISHED, UNFURNISHED, UNKNOWN
+  </ResponseField>
+  
+  <ResponseField name="condition" type="string">
+    Property condition: NEW, GOOD, FAIR, NEEDS_RENOVATION, UNKNOWN
+  </ResponseField>
+  
+  <ResponseField name="floors" type="number | null">
+    Number of floors
+  </ResponseField>
+  
+  <ResponseField name="unitsAvailable" type="number | null">
+    Number of units available
+  </ResponseField>
+  
+  <ResponseField name="description" type="string | null">
+    Full property description
+  </ResponseField>
+  
+  <ResponseField name="price" type="number | null">
+    Property price
+  </ResponseField>
+  
+  <ResponseField name="priceCurrency" type="string">
+    Currency code (default: NGN)
+  </ResponseField>
+  
+  <ResponseField name="pricePerSqm" type="number | null">
+    Price per square meter
+  </ResponseField>
+  
+  <ResponseField name="pricePerBedroom" type="number | null">
+    Price per bedroom
+  </ResponseField>
+  
+  <ResponseField name="initialDeposit" type="number | null">
+    Initial deposit amount
+  </ResponseField>
+  
+  <ResponseField name="paymentPlan" type="string | null">
+    Payment plan details
+  </ResponseField>
+  
+  <ResponseField name="serviceCharge" type="number | null">
+    Service charge amount
+  </ResponseField>
+  
+  <ResponseField name="serviceChargeFreq" type="string | null">
+    Service charge frequency
+  </ResponseField>
+  
+  <ResponseField name="legalFees" type="number | null">
+    Legal fees
+  </ResponseField>
+  
+  <ResponseField name="agentCommission" type="number | null">
+    Agent commission
+  </ResponseField>
+  
+  <ResponseField name="priceNegotiable" type="boolean | null">
+    Whether price is negotiable
+  </ResponseField>
+  
+  <ResponseField name="rentFrequency" type="string | null">
+    Rent payment frequency
+  </ResponseField>
+  
+  <ResponseField name="fullAddress" type="string | null">
+    Complete address
+  </ResponseField>
+  
+  <ResponseField name="locationText" type="string | null">
+    Location description
+  </ResponseField>
+  
+  <ResponseField name="estateName" type="string | null">
+    Estate name
+  </ResponseField>
+  
+  <ResponseField name="streetName" type="string | null">
+    Street name
+  </ResponseField>
+  
+  <ResponseField name="area" type="string | null">
+    Area/neighborhood
+  </ResponseField>
+  
+  <ResponseField name="lga" type="string | null">
+    Local Government Area
+  </ResponseField>
+  
+  <ResponseField name="state" type="string">
+    Nigerian state (default: Lagos)
+  </ResponseField>
+  
+  <ResponseField name="country" type="string">
+    Country (default: Nigeria)
+  </ResponseField>
+  
+  <ResponseField name="latitude" type="number | null">
+    Latitude coordinate
+  </ResponseField>
+  
+  <ResponseField name="longitude" type="number | null">
+    Longitude coordinate
+  </ResponseField>
+  
+  <ResponseField name="landmarks" type="array">
+    Array of nearby landmarks
+  </ResponseField>
+  
+  <ResponseField name="features" type="array">
+    Array of property features
+  </ResponseField>
+  
+  <ResponseField name="security" type="array">
+    Array of security features
+  </ResponseField>
+  
+  <ResponseField name="utilities" type="array">
+    Array of available utilities
+  </ResponseField>
+  
+  <ResponseField name="parkingSpaces" type="number | null">
+    Number of parking spaces
+  </ResponseField>
+  
+  <ResponseField name="images" type="object | null">
+    Property images metadata
+  </ResponseField>
+  
+  <ResponseField name="videos" type="object | null">
+    Property videos metadata
+  </ResponseField>
+  
+  <ResponseField name="virtualTourUrl" type="string | null">
+    Virtual tour URL
+  </ResponseField>
+  
+  <ResponseField name="floorPlanUrl" type="string | null">
+    Floor plan image URL
+  </ResponseField>
+  
+  <ResponseField name="agentName" type="string | null">
+    Agent name
+  </ResponseField>
+  
+  <ResponseField name="agentPhone" type="string | null">
+    Agent phone number
+  </ResponseField>
+  
+  <ResponseField name="agentEmail" type="string | null">
+    Agent email address
+  </ResponseField>
+  
+  <ResponseField name="contactInfo" type="string | null">
+    Additional contact information
+  </ResponseField>
+  
+  <ResponseField name="agencyName" type="string | null">
+    Real estate agency name
+  </ResponseField>
+  
+  <ResponseField name="agencyLogo" type="string | null">
+    Agency logo URL
+  </ResponseField>
+  
+  <ResponseField name="agentVerified" type="boolean">
+    Whether agent is verified
+  </ResponseField>
+  
+  <ResponseField name="qualityScore" type="number | null">
+    Automated quality score (0-100)
+  </ResponseField>
+  
+  <ResponseField name="scrapeTimestamp" type="string | null">
+    When property was scraped (ISO 8601)
+  </ResponseField>
+  
+  <ResponseField name="lastVerifiedAt" type="string | null">
+    Last verification date (ISO 8601)
+  </ResponseField>
+  
+  <ResponseField name="viewCount" type="number">
+    Number of views
+  </ResponseField>
+  
+  <ResponseField name="inquiryCount" type="number">
+    Number of inquiries
+  </ResponseField>
+  
+  <ResponseField name="favoriteCount" type="number">
+    Number of favorites
+  </ResponseField>
+  
+  <ResponseField name="daysOnMarket" type="number | null">
+    Days listed on market
+  </ResponseField>
+  
+  <ResponseField name="searchKeywords" type="array">
+    Search keywords
+  </ResponseField>
+  
+  <ResponseField name="promoTags" type="array">
+    Promotional tags
+  </ResponseField>
+  
+  <ResponseField name="titleTag" type="string | null">
+    Title tag for SEO
+  </ResponseField>
+  
+  <ResponseField name="isPremium" type="boolean">
+    Premium listing flag
+  </ResponseField>
+  
+  <ResponseField name="isFeatured" type="boolean">
+    Featured listing flag
+  </ResponseField>
+  
+  <ResponseField name="isHotDeal" type="boolean">
+    Hot deal flag
+  </ResponseField>
+  
+  <ResponseField name="currentVersion" type="number">
+    Current version number
+  </ResponseField>
+  
+  <ResponseField name="site" type="object">
+    Source site information
+    
+    <ResponseField name="id" type="string">
+      Site ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Site name
+    </ResponseField>
+    
+    <ResponseField name="key" type="string">
+      Site key identifier
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string">
+    Creation timestamp (ISO 8601)
+  </ResponseField>
+  
+  <ResponseField name="updatedAt" type="string">
+    Last update timestamp (ISO 8601)
+  </ResponseField>
+  
+  <ResponseField name="deletedAt" type="string | null">
+    Soft delete timestamp (ISO 8601)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata
+  
+  <ResponseField name="page" type="number">
+    Current page number
+  </ResponseField>
+  
+  <ResponseField name="limit" type="number">
+    Items per page
+  </ResponseField>
+  
+  <ResponseField name="total" type="number">
+    Total number of properties
+  </ResponseField>
+  
+  <ResponseField name="totalPages" type="number">
+    Total number of pages
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Response message
+</ResponseField>
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized">
+  Authentication token is missing or invalid
+  
+  ```json
+  {
+    "success": false,
+    "error": "Unauthorized",
+    "message": "Authentication required"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="400 Bad Request">
+  Validation error with query parameters
+  
+  ```json
+  {
+    "success": false,
+    "error": "Validation error",
+    "message": "Invalid query parameters"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="500 Internal Server Error">
+  Server error while fetching properties
+  
+  ```json
+  {
+    "success": false,
+    "error": "Failed to fetch properties",
+    "message": "Failed to fetch properties"
+  }
+  ```
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://realtors-practice-new-api.onrender.com/api/properties?page=1&limit=20&listingType=SALE&category=RESIDENTIAL&minBedrooms=3&state=Lagos&area=Lekki&sortBy=price&sortOrder=asc" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties?' + new URLSearchParams({
+    page: '1',
+    limit: '20',
+    listingType: 'SALE',
+    category: 'RESIDENTIAL',
+    minBedrooms: '3',
+    state: 'Lagos',
+    area: 'Lekki',
+    sortBy: 'price',
+    sortOrder: 'asc'
+  }),
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const data = await response.json();
+console.log(data.data); // Array of properties
+console.log(data.pagination); // Pagination info
+```
+
+```javascript TypeScript
+interface ListPropertiesParams {
+  page?: number;
+  limit?: number;
+  sortBy?: 'createdAt' | 'updatedAt' | 'price' | 'qualityScore' | 'bedrooms' | 'daysOnMarket';
+  sortOrder?: 'asc' | 'desc';
+  listingType?: string | string[];
+  category?: string | string[];
+  status?: string;
+  verificationStatus?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minBedrooms?: number;
+  maxBedrooms?: number;
+  minBathrooms?: number;
+  state?: string;
+  area?: string | string[];
+  lga?: string;
+  siteId?: string;
+  propertyType?: string;
+  furnishing?: string;
+  search?: string;
+  isPremium?: boolean;
+  isFeatured?: boolean;
+  minQualityScore?: number;
+}
+
+const params: ListPropertiesParams = {
+  page: 1,
+  limit: 20,
+  listingType: 'SALE',
+  category: 'RESIDENTIAL',
+  minBedrooms: 3,
+  state: 'Lagos',
+  area: 'Lekki',
+  sortBy: 'price',
+  sortOrder: 'asc'
+};
+
+const response = await fetch(
+  `https://realtors-practice-new-api.onrender.com/api/properties?${new URLSearchParams(params as any)}`,
+  {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  }
+);
+
+const data = await response.json();
+```
+
+</CodeGroup>
+
+## Response Example
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "clx1a2b3c4d5e6f7g8h9i0",
+      "hash": "abc123def456",
+      "title": "Luxury 4 Bedroom Detached Duplex with BQ in Lekki Phase 1",
+      "listingUrl": "https://example.com/property/12345",
+      "source": "PropertyPro",
+      "siteId": "clw9x8y7z6a5b4c3d2e1",
+      "status": "AVAILABLE",
+      "verificationStatus": "VERIFIED",
+      "listingType": "SALE",
+      "category": "RESIDENTIAL",
+      "propertyType": "Detached Duplex",
+      "propertySubtype": null,
+      "bedrooms": 4,
+      "bathrooms": 5,
+      "toilets": 5,
+      "bq": 1,
+      "landSize": "600sqm",
+      "landSizeSqm": 600,
+      "buildingSize": "450sqm",
+      "buildingSizeSqm": 450,
+      "plotDimensions": null,
+      "yearBuilt": 2022,
+      "renovationYear": null,
+      "furnishing": "SEMI_FURNISHED",
+      "condition": "NEW",
+      "floors": 2,
+      "unitsAvailable": 1,
+      "description": "Newly built 4 bedroom detached duplex with excellent finishing...",
+      "price": 185000000,
+      "priceCurrency": "NGN",
+      "pricePerSqm": 411111,
+      "pricePerBedroom": 46250000,
+      "initialDeposit": null,
+      "paymentPlan": null,
+      "serviceCharge": 500000,
+      "serviceChargeFreq": "annually",
+      "legalFees": null,
+      "agentCommission": null,
+      "priceNegotiable": true,
+      "rentFrequency": null,
+      "fullAddress": "Lekki Phase 1, Lagos",
+      "locationText": "Lekki Phase 1",
+      "estateName": "Richmond Estate",
+      "streetName": null,
+      "area": "Lekki",
+      "lga": "Eti-Osa",
+      "state": "Lagos",
+      "country": "Nigeria",
+      "latitude": 6.4474,
+      "longitude": 3.4706,
+      "landmarks": ["Shoprite", "LUTH", "Chevron"],
+      "features": ["Swimming Pool", "Gym", "Garden", "Study Room"],
+      "security": ["24/7 Security", "CCTV", "Gated Estate"],
+      "utilities": ["Water", "Electricity", "Internet Ready"],
+      "parkingSpaces": 4,
+      "images": {
+        "urls": ["image1.jpg", "image2.jpg"],
+        "count": 2
+      },
+      "videos": null,
+      "virtualTourUrl": null,
+      "floorPlanUrl": "https://example.com/floorplan.jpg",
+      "agentName": "John Doe",
+      "agentPhone": "+2348012345678",
+      "agentEmail": "john@example.com",
+      "contactInfo": null,
+      "agencyName": "Prime Properties Ltd",
+      "agencyLogo": null,
+      "agentVerified": true,
+      "qualityScore": 87,
+      "scrapeTimestamp": "2024-01-15T10:30:00Z",
+      "lastVerifiedAt": "2024-01-20T14:00:00Z",
+      "viewCount": 245,
+      "inquiryCount": 12,
+      "favoriteCount": 18,
+      "daysOnMarket": 15,
+      "searchKeywords": ["lekki", "detached", "4 bedroom"],
+      "promoTags": ["NEW", "HOT DEAL"],
+      "titleTag": null,
+      "isPremium": true,
+      "isFeatured": true,
+      "isHotDeal": false,
+      "currentVersion": 1,
+      "site": {
+        "id": "clw9x8y7z6a5b4c3d2e1",
+        "name": "PropertyPro",
+        "key": "propertypro"
+      },
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-20T14:00:00Z",
+      "deletedAt": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 156,
+    "totalPages": 8
+  },
+  "message": "Properties retrieved successfully"
+}
+```
+
+## Use Cases
+
+### Search for properties in a specific area
+```javascript
+const properties = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties?' + new URLSearchParams({
+    area: 'Lekki',
+    state: 'Lagos',
+    listingType: 'SALE'
+  }),
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+```
+
+### Filter by price range
+```javascript
+const properties = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties?' + new URLSearchParams({
+    minPrice: '50000000',
+    maxPrice: '100000000',
+    listingType: 'SALE'
+  }),
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+```
+
+### Full-text search
+```javascript
+const properties = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties?' + new URLSearchParams({
+    search: 'swimming pool lekki'
+  }),
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+```
+
+### Filter premium properties
+```javascript
+const properties = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties?' + new URLSearchParams({
+    isPremium: 'true',
+    isFeatured: 'true',
+    sortBy: 'qualityScore',
+    sortOrder: 'desc'
+  }),
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+```

@@ -1,0 +1,406 @@
+---
+title: AI Intelligence
+description: Natural language query parsing, LLM-powered data extraction, and automated feature detection
+icon: brain
+---
+
+Realtors' Practice uses AI at three critical points: natural language search, missing data extraction, and automated feature classification.
+
+## Natural Language Query Parsing
+
+Users can search with conversational queries instead of rigid filters:
+
+<CodeGroup>
+```text Budget-focused
+3 bedroom flat in Lekki under 30M
+```
+
+```text Feature-based
+Detached duplex in Ikoyi with pool and gym
+```
+
+```text Rental-specific
+2 bed apartment in Abuja under 3M annual rent
+```
+
+```text Land search
+Land for sale in Ajah below 20M per plot
+```
+</CodeGroup>
+
+The NLP pipeline extracts structured filters from these queries:
+
+```python
+# extractors/universal_nlp.py:detect_listing_type()
+listingType = detect_listing_type(
+    title="3 bedroom flat in Lekki under 30M",
+    description="...",
+    price_text="₦28,000,000"
+)
+# Returns: "SALE"
+```
+
+### Listing Type Detection
+
+The system infers listing type from keywords (extractors/universal_nlp.py):
+
+<Tabs>
+  <Tab title="Sale">
+    **Keywords**: "buy", "for sale", "purchase", "own", "₦...M" (price in millions)
+    
+    **Example**: "Detached duplex for sale in Ikoyi - ₦85M"
+  </Tab>
+  
+  <Tab title="Rent">
+    **Keywords**: "rent", "lease", "annual", "per annum", "/year"
+    
+    **Example**: "3 bedroom flat - ₦2.5M per annum"
+  </Tab>
+  
+  <Tab title="Shortlet">
+    **Keywords**: "shortlet", "short let", "airbnb", "daily", "nightly"
+    
+    **Example**: "Furnished apartment shortlet - ₦25k/night"
+  </Tab>
+  
+  <Tab title="Lease">
+    **Keywords**: "long lease", "ground rent", "leasehold"
+    
+    **Example**: "Commercial space on 99-year lease"
+  </Tab>
+</Tabs>
+
+## LLM-Powered Data Extraction
+
+When CSS selectors fail to extract critical fields, the scraper invokes an LLM to parse raw HTML text (app.py:232-241):
+
+### Extraction Flow
+
+<Steps>
+  <Step title="Check for missing fields">
+    If `price`, `bedrooms`, or `location` are missing after selector extraction.
+  </Step>
+  <Step title="Convert HTML to text">
+    BeautifulSoup strips all tags: `soup.get_text(separator=" ", strip=True)`
+  </Step>
+  <Step title="Send to LLM">
+    Prompt: "Extract property details from this listing text: {page_text}"
+  </Step>
+  <Step title="Merge results">
+    LLM output fills missing fields in the raw data dictionary.
+  </Step>
+</Steps>
+
+```python
+if not raw_data.get("price_text") or not raw_data.get("bedrooms") or not raw_data.get("location_text"):
+    await report_log(job_id, "DEBUG", f"Missing data for {listing_url}, attempting LLM fallback...")
+    from extractors.llm_extractor import extract_with_llm
+    
+    soup = BeautifulSoup(listing_html, "lxml")
+    page_text = soup.get_text(separator=" ", strip=True)
+    
+    raw_data = extract_with_llm(page_text, raw_data)
+```
+
+<Warning>
+**Cost & Latency**: LLM extraction adds 2-5 seconds per property and incurs API costs. Use only as a fallback.
+</Warning>
+
+### Example LLM Response
+
+Input text:
+```
+Luxury 4 bedroom duplex in Banana Island. Asking price 120 million naira. 
+Contact agent on 08012345678.
+```
+
+LLM extraction:
+```json
+{
+  "price_text": "₦120,000,000",
+  "bedrooms": 4,
+  "location_text": "Banana Island",
+  "agentPhone": "08012345678",
+  "propertyType": "Duplex"
+}
+```
+
+## Price Parsing
+
+The `price_parser` normalizes Nigerian price formats (extractors/price_parser.py):
+
+<CodeGroup>
+```python Millions
+"₦28M" → 28000000
+"N 5.5 million" → 5500000
+"28,000,000 naira" → 28000000
+```
+
+```python Thousands
+"₦850k" → 850000
+"N 1,200,000" → 1200000
+```
+
+```python Per period
+"₦2.5M per annum" → price=2500000, rentFrequency="ANNUAL"
+"₦250k/month" → price=250000, rentFrequency="MONTHLY"
+"₦15k nightly" → price=15000, rentFrequency="DAILY"
+```
+</CodeGroup>
+
+### Parsed Output
+
+```python
+price_info = parse_price("₦28M negotiable")
+# Returns:
+{
+  "price": 28000000,
+  "priceCurrency": "NGN",
+  "priceNegotiable": True
+}
+```
+
+## Location Parsing
+
+The `location_parser` breaks down Nigerian addresses (extractors/location_parser.py):
+
+```python
+location_info = parse_location("Orchid Road, Lekki Phase 2, Lagos")
+# Returns:
+{
+  "area": "Lekki Phase 2",
+  "streetName": "Orchid Road",
+  "state": "Lagos",
+  "country": "Nigeria"
+}
+```
+
+### Location Hierarchy
+
+<Steps>
+  <Step title="Street Name">
+    "Admiralty Way", "Ligali Ayorinde", "Banana Island Road"
+  </Step>
+  <Step title="Area">
+    "Lekki Phase 1", "Victoria Island", "Ikoyi", "Wuse 2"
+  </Step>
+  <Step title="LGA (Local Government Area)">
+    "Eti-Osa", "Lagos Island", "Abuja Municipal"
+  </Step>
+  <Step title="State">
+    "Lagos", "Abuja", "Rivers", "Ogun"
+  </Step>
+</Steps>
+
+<Info>
+The parser recognizes 200+ Nigerian areas, estates, and landmarks.
+</Info>
+
+## Feature Extraction
+
+The `feature_extractor` uses keyword matching and NLP to categorize property features (extractors/feature_extractor.py):
+
+```python
+features = extract_features(
+    description="Spacious 4 bed with swimming pool, gym, and 24hr security",
+    features_text="Pool, Gym, Generator, CCTV, Gatehouse"
+)
+```
+
+### Feature Categories
+
+<AccordionGroup>
+  <Accordion title="Amenities" icon="sparkles">
+    - Swimming pool
+    - Gym/Fitness center
+    - Playground
+    - Tennis court
+    - Garden/Green area
+    - Rooftop terrace
+  </Accordion>
+
+  <Accordion title="Security" icon="shield">
+    - 24-hour security
+    - CCTV cameras
+    - Gatehouse
+    - Perimeter fencing
+    - Security lights
+    - Alarm system
+  </Accordion>
+
+  <Accordion title="Utilities" icon="plug">
+    - Generator
+    - Solar panels
+    - Borehole
+    - Water treatment
+    - Standby power
+    - Central AC
+  </Accordion>
+
+  <Accordion title="Furnishing" icon="couch">
+    - Air conditioning
+    - Kitchen cabinets
+    - Built-in wardrobes
+    - Chandeliers
+    - Imported fittings
+    - Marble floors
+  </Accordion>
+</AccordionGroup>
+
+Extracted features are stored as arrays:
+
+```typescript
+// schema.prisma:247-250
+features    String[] @default([])
+security    String[] @default([])
+utilities   String[] @default([])
+```
+
+## Quality Scoring
+
+Each property receives a quality score (0-100) based on data completeness (pipeline/validator.py):
+
+| Field | Weight | Points |
+|-------|--------|--------|
+| Title | Required | 10 |
+| Price | Required | 10 |
+| Location (area + state) | Required | 15 |
+| Bedrooms | High | 10 |
+| Images (≥3) | High | 15 |
+| Description (≥100 chars) | Medium | 10 |
+| Land/Building size | Medium | 8 |
+| Agent contact | Medium | 7 |
+| Features (≥5) | Low | 8 |
+| Coordinates | Low | 7 |
+
+### Score Calculation
+
+```python
+validated = validate_property(normalized)
+# Returns normalized data + qualityScore field
+```
+
+<Tip>
+Properties with `qualityScore < 40` are flagged for manual review before publishing.
+</Tip>
+
+## Geocoding
+
+The enrichment pipeline geocodes addresses using Google Maps API (pipeline/enricher.py):
+
+```python
+all_properties = await enrich_property(all_properties)
+# Adds latitude/longitude to properties without coordinates
+```
+
+### Geocoding Flow
+
+<Steps>
+  <Step title="Check existing coordinates">
+    Skip properties that already have `latitude` and `longitude`.
+  </Step>
+  <Step title="Build search query">
+    Combines `streetName`, `area`, `state`, and `country`.
+  </Step>
+  <Step title="Query Google Maps Geocoding API">
+    Returns lat/lng and formatted address.
+  </Step>
+  <Step title="Update property">
+    Saves coordinates and full address to database.
+  </Step>
+</Steps>
+
+<Warning>
+Geocoding has API rate limits. Batch requests and cache results to avoid quota exhaustion.
+</Warning>
+
+## Speech Recognition Enhancements
+
+The voice search system includes Nigerian-specific phonetic corrections (search-bar.tsx:61-75):
+
+```typescript
+const NIGERIAN_DICT: Record<string, string> = {
+  "leki": "Lekki",
+  "ikoy": "Ikoyi",
+  "ikeya": "Ikeja",
+  "shurulere": "Surulere",
+  "yava": "Yaba",
+  "aja": "Ajah",
+  "gbaganda": "Gbagada",
+  "ojudu": "Ojodu",
+  "viktor": "Victoria",
+  "banana": "Banana Island",
+  "magodo": "Magodo"
+};
+```
+
+Corrections are applied to the raw transcript before sending to the search API:
+
+```typescript
+Object.entries(NIGERIAN_DICT).forEach(([wrong, right]) => {
+  const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+  transcript = transcript.replace(regex, right);
+});
+```
+
+## Data Normalization
+
+The normalizer standardizes extracted data (pipeline/normalizer.py):
+
+<Tabs>
+  <Tab title="Property Types">
+    - "Flat" / "Apartment" → `RESIDENTIAL`
+    - "Duplex" / "Detached" → `RESIDENTIAL`
+    - "Office" / "Shop" → `COMMERCIAL`
+    - "Plot" / "Acres" → `LAND`
+  </Tab>
+  
+  <Tab title="Furnishing">
+    - "Fully furnished" → `FURNISHED`
+    - "Semi-furnished" → `SEMI_FURNISHED`
+    - "Unfurnished" / "Shell" → `UNFURNISHED`
+    - Unknown → `UNKNOWN`
+  </Tab>
+  
+  <Tab title="Condition">
+    - "New" / "Newly built" → `NEW`
+    - "Renovated" / "Refurbished" → `GOOD`
+    - "Needs work" → `NEEDS_RENOVATION`
+    - Unknown → `UNKNOWN`
+  </Tab>
+</Tabs>
+
+## AI Limitations
+
+While AI improves extraction, it has limitations:
+
+<Warning>
+**Hallucinations**: LLMs may invent data (e.g., bedrooms: 3 when the text says "spacious").
+
+**Cost**: OpenAI API calls add $0.002-$0.01 per property.
+
+**Latency**: LLM requests take 2-5 seconds vs. 0.1s for selectors.
+
+**Accuracy**: CSS selectors are 95%+ accurate; LLM extraction is ~85% accurate.
+</Warning>
+
+<Tip>
+Use LLM extraction only for high-value properties or sites with unpredictable HTML.
+</Tip>
+
+## Future Enhancements
+
+<CardGroup cols={2}>
+  <Card title="Saved Searches" icon="bookmark" href="/features/saved-searches">
+    AI-powered alerts for new matching properties.
+  </Card>
+  <Card title="Property Comparison" icon="code-compare" href="/features/comparison">
+    Side-by-side AI analysis of property value.
+  </Card>
+  <Card title="Price Prediction" icon="chart-line" href="/features/price-prediction">
+    ML models for property valuation.
+  </Card>
+  <Card title="Image Analysis" icon="image" href="/features/image-analysis">
+    AI-powered room detection and quality scoring.
+  </Card>
+</CardGroup>

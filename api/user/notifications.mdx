@@ -1,0 +1,525 @@
+---
+title: "Notifications"
+description: "Manage user notifications and alerts"
+---
+
+## List Notifications
+
+Retrieve a paginated list of notifications for the authenticated user.
+
+```http
+GET /api/notifications
+```
+
+### Query Parameters
+
+<ParamField query="limit" type="number" default="20">
+  Number of notifications to return per page (max 100)
+</ParamField>
+
+<ParamField query="offset" type="number" default="0">
+  Number of notifications to skip for pagination
+</ParamField>
+
+<ParamField query="read" type="boolean">
+  Filter by read status. Omit to return all notifications.
+  - `true` - Only read notifications
+  - `false` - Only unread notifications
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+```bash cURL (All)
+curl "https://api.realtorspractice.com/api/notifications?limit=20&offset=0" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```bash cURL (Unread)
+curl "https://api.realtorspractice.com/api/notifications?read=false&limit=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/notifications?read=false&limit=20',
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.realtorspractice.com/api/notifications',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'},
+    params={'read': 'false', 'limit': 20}
+)
+data = response.json()
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Indicates if the request was successful
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  Notification data and metadata
+  
+  <ResponseField name="notifications" type="array" required>
+    Array of notification objects
+    
+    <ResponseField name="id" type="string" required>
+      Notification ID (CUID)
+    </ResponseField>
+    
+    <ResponseField name="type" type="enum" required>
+      Notification type: `NEW_MATCH`, `PRICE_DROP`, `SCRAPE_COMPLETE`, `SCRAPE_FAILED`, or `SYSTEM`
+    </ResponseField>
+    
+    <ResponseField name="title" type="string" required>
+      Notification title
+    </ResponseField>
+    
+    <ResponseField name="message" type="string" required>
+      Notification message body
+    </ResponseField>
+    
+    <ResponseField name="data" type="object">
+      Additional notification metadata (structure varies by type)
+    </ResponseField>
+    
+    <ResponseField name="read" type="boolean" required>
+      Whether the notification has been read
+    </ResponseField>
+    
+    <ResponseField name="readAt" type="string">
+      ISO 8601 timestamp when notification was marked as read
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp when notification was created
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="unreadCount" type="number" required>
+    Total number of unread notifications for this user
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination metadata
+  
+  <ResponseField name="total" type="number" required>
+    Total number of notifications matching the filter
+  </ResponseField>
+  
+  <ResponseField name="page" type="number" required>
+    Current page number (1-based)
+  </ResponseField>
+  
+  <ResponseField name="limit" type="number" required>
+    Items per page
+  </ResponseField>
+</ResponseField>
+
+### Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "notifications": [
+      {
+        "id": "cm5abc123def456789",
+        "type": "NEW_MATCH",
+        "title": "New Property Match",
+        "message": "3 new properties match your search: '3-bedroom flats in Lekki'",
+        "data": {
+          "savedSearchId": "cm5search123456",
+          "savedSearchName": "Lekki 3BR Flats",
+          "matchCount": 3,
+          "propertyIds": [
+            "cm5prop1111",
+            "cm5prop2222",
+            "cm5prop3333"
+          ]
+        },
+        "read": false,
+        "readAt": null,
+        "createdAt": "2026-03-11T08:15:00.000Z"
+      },
+      {
+        "id": "cm5abc234def567890",
+        "type": "PRICE_DROP",
+        "title": "Price Drop Alert",
+        "message": "Price reduced by ₦5M on 4BR Duplex in Ikoyi",
+        "data": {
+          "propertyId": "cm5prop4444",
+          "propertyTitle": "Luxury 4BR Duplex - Ikoyi",
+          "oldPrice": 150000000,
+          "newPrice": 145000000,
+          "difference": -5000000,
+          "percentageChange": -3.33
+        },
+        "read": false,
+        "readAt": null,
+        "createdAt": "2026-03-11T07:30:00.000Z"
+      },
+      {
+        "id": "cm5abc345def678901",
+        "type": "SCRAPE_COMPLETE",
+        "title": "Scrape Job Completed",
+        "message": "Your custom scrape job for 'Victoria Island offices' completed successfully",
+        "data": {
+          "jobId": "cm5job123",
+          "totalListings": 87,
+          "newListings": 12,
+          "updatedListings": 8,
+          "duplicates": 67,
+          "durationMs": 145320
+        },
+        "read": true,
+        "readAt": "2026-03-11T06:50:00.000Z",
+        "createdAt": "2026-03-11T06:45:00.000Z"
+      },
+      {
+        "id": "cm5abc456def789012",
+        "type": "SCRAPE_FAILED",
+        "title": "Scrape Job Failed",
+        "message": "Scrape job failed due to site timeout",
+        "data": {
+          "jobId": "cm5job124",
+          "error": "Connection timeout after 30s",
+          "siteName": "PropertyPro Nigeria"
+        },
+        "read": true,
+        "readAt": "2026-03-10T18:20:00.000Z",
+        "createdAt": "2026-03-10T18:15:00.000Z"
+      },
+      {
+        "id": "cm5abc567def890123",
+        "type": "SYSTEM",
+        "title": "Account Updated",
+        "message": "Your account role has been updated to EDITOR",
+        "data": {
+          "previousRole": "VIEWER",
+          "newRole": "EDITOR",
+          "updatedBy": "admin@realtorspractice.com"
+        },
+        "read": true,
+        "readAt": "2026-03-10T14:10:00.000Z",
+        "createdAt": "2026-03-10T14:05:00.000Z"
+      }
+    ],
+    "unreadCount": 2
+  },
+  "pagination": {
+    "total": 5,
+    "page": 1,
+    "limit": 20
+  },
+  "message": "Notifications retrieved successfully"
+}
+```
+
+---
+
+## Get Unread Count
+
+Quickly retrieve just the count of unread notifications.
+
+```http
+GET /api/notifications/unread-count
+```
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl https://api.realtorspractice.com/api/notifications/unread-count \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/notifications/unread-count',
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+const data = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "count": 7
+  },
+  "message": "Unread count retrieved successfully"
+}
+```
+
+---
+
+## Mark as Read
+
+Mark a single notification as read.
+
+```http
+PATCH /api/notifications/:id/read
+```
+
+### Path Parameters
+
+<ParamField path="id" type="string" required>
+  The notification ID to mark as read
+</ParamField>
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH https://api.realtorspractice.com/api/notifications/cm5abc123def456789/read \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const notificationId = 'cm5abc123def456789';
+const response = await fetch(
+  `https://api.realtorspractice.com/api/notifications/${notificationId}/read`,
+  {
+    method: 'PATCH',
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+notification_id = 'cm5abc123def456789'
+response = requests.patch(
+    f'https://api.realtorspractice.com/api/notifications/{notification_id}/read',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'}
+)
+data = response.json()
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "cm5abc123def456789",
+    "type": "NEW_MATCH",
+    "title": "New Property Match",
+    "message": "3 new properties match your search: '3-bedroom flats in Lekki'",
+    "data": {
+      "savedSearchId": "cm5search123456",
+      "savedSearchName": "Lekki 3BR Flats",
+      "matchCount": 3
+    },
+    "read": true,
+    "readAt": "2026-03-11T09:45:22.183Z",
+    "createdAt": "2026-03-11T08:15:00.000Z"
+  },
+  "message": "Notification marked as read"
+}
+```
+
+---
+
+## Mark All as Read
+
+Mark all unread notifications as read for the authenticated user.
+
+```http
+PATCH /api/notifications/read-all
+```
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH https://api.realtorspractice.com/api/notifications/read-all \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.realtorspractice.com/api/notifications/read-all',
+  {
+    method: 'PATCH',
+    headers: {
+      'Authorization': 'Bearer YOUR_TOKEN'
+    }
+  }
+);
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    'https://api.realtorspractice.com/api/notifications/read-all',
+    headers={'Authorization': 'Bearer YOUR_TOKEN'}
+)
+data = response.json()
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "All notifications marked as read"
+}
+```
+
+---
+
+## Notification Types
+
+Notifications are categorized into five types, each with a specific data structure:
+
+### NEW_MATCH
+
+Triggered when properties matching a saved search are found.
+
+**Data structure:**
+```json
+{
+  "savedSearchId": "string",
+  "savedSearchName": "string",
+  "matchCount": 3,
+  "propertyIds": ["string"]
+}
+```
+
+### PRICE_DROP
+
+Triggered when a tracked property's price decreases.
+
+**Data structure:**
+```json
+{
+  "propertyId": "string",
+  "propertyTitle": "string",
+  "oldPrice": 150000000,
+  "newPrice": 145000000,
+  "difference": -5000000,
+  "percentageChange": -3.33
+}
+```
+
+### SCRAPE_COMPLETE
+
+Triggered when a user-initiated scrape job completes successfully.
+
+**Data structure:**
+```json
+{
+  "jobId": "string",
+  "totalListings": 87,
+  "newListings": 12,
+  "updatedListings": 8,
+  "duplicates": 67,
+  "durationMs": 145320
+}
+```
+
+### SCRAPE_FAILED
+
+Triggered when a scrape job fails.
+
+**Data structure:**
+```json
+{
+  "jobId": "string",
+  "error": "string",
+  "siteName": "string"
+}
+```
+
+### SYSTEM
+
+General system notifications (account changes, announcements, etc.).
+
+**Data structure:** Varies based on the specific system event.
+
+---
+
+## Real-time Updates
+
+Notifications are also delivered in real-time via Socket.io. Connect to the WebSocket endpoint and listen for the `notification` event:
+
+```javascript
+import io from 'socket.io-client';
+
+const socket = io('https://api.realtorspractice.com', {
+  auth: {
+    token: 'YOUR_TOKEN'
+  }
+});
+
+socket.on('notification', (notification) => {
+  console.log('New notification:', notification);
+  // Update UI, show toast, increment badge count, etc.
+});
+```
+
+---
+
+## Error Responses
+
+### 401 Unauthorized
+
+```json
+{
+  "success": false,
+  "error": "Authentication required",
+  "message": "Unauthorized"
+}
+```
+
+### 404 Not Found
+
+```json
+{
+  "success": false,
+  "error": "Notification not found or does not belong to this user",
+  "message": "Notification not found"
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "success": false,
+  "error": "Database query failed",
+  "message": "Failed to fetch notifications"
+}
+```

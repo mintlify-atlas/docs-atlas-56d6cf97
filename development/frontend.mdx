@@ -1,0 +1,319 @@
+---
+title: Frontend Development
+description: Next.js 15 frontend architecture and development patterns
+---
+
+The Realtors' Practice frontend is built with Next.js 15 using the App Router, React 19, TypeScript, and Tailwind CSS v4.
+
+## Tech Stack
+
+- **Framework**: Next.js 15.5.12 (App Router)
+- **UI Library**: React 19.1.0
+- **Language**: TypeScript 5
+- **Styling**: Tailwind CSS v4, shadcn/ui (new-york style)
+- **State Management**: Zustand, TanStack Query (React Query)
+- **Maps**: MapLibre, Mapbox, Leaflet
+- **Real-time**: Socket.io Client
+- **Forms**: React Hook Form + Zod
+- **Animations**: Framer Motion, GSAP
+
+## Project Structure
+
+```
+frontend/
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/            # Auth routes (login, register)
+│   ├── (dashboard)/       # Dashboard routes
+│   ├── search/            # Search pages
+│   └── layout.tsx         # Root layout
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   ├── layout/           # Layout components
+│   ├── property/         # Property-related components
+│   ├── search/           # Search components
+│   └── map/              # Map components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utilities and configurations
+│   ├── api.ts           # API client
+│   ├── supabase.ts      # Supabase client
+│   ├── socket.ts        # Socket.io client
+│   └── map-providers/   # Map provider abstractions
+├── stores/               # Zustand stores
+│   ├── ui.store.ts      # UI state
+│   └── map.store.ts     # Map state
+└── types/                # TypeScript type definitions
+```
+
+## Key Dependencies
+
+### UI Components
+
+- **shadcn/ui**: Component library built on Radix UI
+- **Radix UI**: Unstyled accessible primitives
+- **Lucide React**: Icon library
+- **Tailwind CSS v4**: Utility-first CSS framework
+
+### Data Fetching
+
+- **TanStack Query**: Server state management
+- **Axios**: HTTP client
+- **Socket.io Client**: Real-time updates
+
+### Maps
+
+- **MapLibre GL**: Open-source map rendering
+- **Mapbox GL**: Premium map provider
+- **React Map GL**: React wrapper for map libraries
+- **Supercluster**: Marker clustering
+
+### Forms & Validation
+
+- **React Hook Form**: Form state management
+- **Zod**: Schema validation
+
+## npm Scripts
+
+<CodeGroup>
+```bash npm
+npm run dev       # Start development server (Turbopack)
+npm run build     # Production build
+npm run analyze   # Build with bundle analyzer
+npm start         # Start production server
+npm run lint      # Run ESLint
+```
+
+```bash yarn
+yarn dev          # Start development server (Turbopack)
+yarn build        # Production build
+yarn analyze      # Build with bundle analyzer
+yarn start        # Start production server
+yarn lint         # Run ESLint
+```
+
+```bash pnpm
+pnpm dev          # Start development server (Turbopack)
+pnpm build        # Production build
+pnpm analyze      # Build with bundle analyzer
+pnpm start        # Start production server
+pnpm lint         # Run ESLint
+```
+</CodeGroup>
+
+## Development Patterns
+
+### Server State with TanStack Query
+
+Use custom hooks for all server data fetching:
+
+```tsx
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
+export function useProperties(filters: PropertyFilters) {
+  return useQuery({
+    queryKey: ['properties', filters],
+    queryFn: () => api.get('/properties', { params: filters }),
+  });
+}
+```
+
+### Client State with Zustand
+
+Keep UI state in Zustand stores:
+
+```tsx
+// stores/ui.store.ts
+import { create } from 'zustand';
+
+interface UIState {
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+}
+
+export const useUIStore = create<UIState>((set) => ({
+  sidebarOpen: true,
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+}));
+```
+
+### URL State for Filters
+
+Use Next.js `searchParams` for shareable filter state:
+
+```tsx
+import { useSearchParams, useRouter } from 'next/navigation';
+
+export function SearchFilters() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set(key, value);
+    router.push(`/search?${params.toString()}`);
+  };
+
+  return (...)
+}
+```
+
+### Real-time Updates
+
+Use the Socket.io hook for real-time features:
+
+```tsx
+import { useSocket } from '@/hooks/use-socket';
+
+export function PropertyList() {
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    socket?.on('property:updated', (data) => {
+      queryClient.invalidateQueries(['properties']);
+    });
+  }, [socket]);
+
+  return (...)
+}
+```
+
+## Component Patterns
+
+### shadcn/ui Components
+
+Add new components using the CLI:
+
+```bash
+npx shadcn@latest add button
+npx shadcn@latest add card
+npx shadcn@latest add dialog
+```
+
+Components are added to `components/ui/` and can be customized.
+
+### Custom Components
+
+Follow the component structure:
+
+```tsx
+// components/property/property-card.tsx
+import { Card, CardContent } from '@/components/ui/card';
+import { Property } from '@/types';
+
+interface PropertyCardProps {
+  property: Property;
+  onClick?: () => void;
+}
+
+export function PropertyCard({ property, onClick }: PropertyCardProps) {
+  return (
+    <Card onClick={onClick} className="cursor-pointer hover:shadow-lg">
+      <CardContent>
+        {/* Card content */}
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Styling Conventions
+
+### CSS Variables
+
+Always use CSS variables for colors, never hardcoded values:
+
+```tsx
+// ✅ Good
+<div className="bg-primary text-primary-foreground" />
+
+// ❌ Bad
+<div className="bg-[#0001FC] text-white" />
+```
+
+### Design Tokens
+
+- **Primary**: `var(--primary)` - Electric blue (#0001FC)
+- **Accent**: `var(--accent)` - Orange (#FF6600) for prices
+- **Success**: Green (#0a6906)
+- **Background**: #F7F7F7
+- **Card**: #FFFFFF
+
+### Typography
+
+- **Display font**: Space Grotesk - Use `font-display` class
+- **Body font**: Outfit - Use `font-body` class
+
+```tsx
+<h1 className="font-display text-4xl font-bold">Heading</h1>
+<p className="font-body text-base">Body text</p>
+```
+
+## API Integration
+
+The frontend communicates with the backend API at `http://localhost:5000/api` (dev) or production URL.
+
+### API Client
+
+```tsx
+// lib/api.ts
+import axios from 'axios';
+import { supabase } from './supabase';
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+});
+
+// Add auth token to requests
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
+
+export { api };
+```
+
+## Map Providers
+
+The platform supports multiple map providers through an abstraction layer:
+
+- **OSM**: Default, free, open-source
+- **Mapbox**: Premium, requires API key
+- **Google Maps**: Premium, requires API key
+
+Map provider can be switched in user settings. All providers implement the `MapProvider` interface in `lib/map-providers/`.
+
+## Building for Production
+
+```bash
+npm run build
+npm start
+```
+
+The build process:
+1. Runs TypeScript compiler
+2. Optimizes assets
+3. Generates static pages where possible
+4. Creates production bundle
+
+### Bundle Analysis
+
+```bash
+npm run analyze
+```
+
+This generates a visual report of bundle sizes to help identify optimization opportunities.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend API" icon="server" href="/development/backend">
+    Learn about the backend API structure and endpoints
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database">
+    Understand the data models and relationships
+  </Card>
+</CardGroup>

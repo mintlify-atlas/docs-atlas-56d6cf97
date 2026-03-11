@@ -1,0 +1,617 @@
+---
+title: "Saved Searches"
+description: "Create, manage, and track saved search alerts with automatic match notifications"
+---
+
+## Overview
+
+Saved searches allow authenticated users to save filter criteria and receive notifications when new properties match their criteria. The system automatically checks all active saved searches periodically and creates match records.
+
+<Note>
+  All saved search endpoints require authentication via `Authorization: Bearer <token>` header.
+</Note>
+
+---
+
+## Create Saved Search
+
+### POST /api/saved-searches
+
+Create a new saved search with filter criteria and notification preferences.
+
+#### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token from Supabase authentication
+</ParamField>
+
+<ParamField header="Content-Type" type="string" default="application/json">
+  Must be `application/json`
+</ParamField>
+
+#### Request Body
+
+<ParamField body="name" type="string" required>
+  Display name for the saved search (1-100 characters)
+</ParamField>
+
+<ParamField body="description" type="string">
+  Optional description (max 500 characters)
+</ParamField>
+
+<ParamField body="filters" type="object" required>
+  Search filter criteria
+  
+  <ParamField body="listingType" type="string">
+    SALE, RENT, LEASE, or SHORTLET
+  </ParamField>
+  
+  <ParamField body="category" type="string">
+    RESIDENTIAL, COMMERCIAL, LAND, SHORTLET, INDUSTRIAL
+  </ParamField>
+  
+  <ParamField body="minPrice" type="number">
+    Minimum price in NGN
+  </ParamField>
+  
+  <ParamField body="maxPrice" type="number">
+    Maximum price in NGN
+  </ParamField>
+  
+  <ParamField body="bedrooms" type="integer">
+    Number of bedrooms (exact match)
+  </ParamField>
+  
+  <ParamField body="state" type="string">
+    Nigerian state (e.g., "Lagos", "Abuja")
+  </ParamField>
+  
+  <ParamField body="area" type="string">
+    Specific area/neighborhood (case-insensitive partial match)
+  </ParamField>
+  
+  <ParamField body="propertyType" type="string">
+    Property type (e.g., "Flat", "Duplex", "Detached")
+  </ParamField>
+  
+  <ParamField body="features" type="array">
+    Array of required features (e.g., ["Swimming Pool", "Gym"])
+  </ParamField>
+</ParamField>
+
+<ParamField body="naturalQuery" type="string">
+  Optional natural language query string for reference
+</ParamField>
+
+<ParamField body="notifyEmail" type="boolean" default="false">
+  Send email notifications for new matches
+</ParamField>
+
+<ParamField body="notifyInApp" type="boolean" default="true">
+  Create in-app notifications for new matches
+</ParamField>
+
+#### Response
+
+<ResponseField name="success" type="boolean" required>
+  Whether the request succeeded
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  Created saved search object
+  
+  <ResponseField name="id" type="string">
+    Saved search CUID
+  </ResponseField>
+  
+  <ResponseField name="userId" type="string">
+    Owner user ID
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Search name
+  </ResponseField>
+  
+  <ResponseField name="description" type="string">
+    Search description
+  </ResponseField>
+  
+  <ResponseField name="filters" type="object">
+    Filter criteria object
+  </ResponseField>
+  
+  <ResponseField name="isActive" type="boolean">
+    Whether the search is actively checking for matches
+  </ResponseField>
+  
+  <ResponseField name="matchCount" type="integer">
+    Total number of matches found
+  </ResponseField>
+  
+  <ResponseField name="newSinceCheck" type="integer">
+    New matches since last check
+  </ResponseField>
+  
+  <ResponseField name="notifyEmail" type="boolean">
+    Email notification preference
+  </ResponseField>
+  
+  <ResponseField name="notifyInApp" type="boolean">
+    In-app notification preference
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string">
+    ISO 8601 timestamp
+  </ResponseField>
+</ResponseField>
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://realtors-practice-new-api.onrender.com/api/saved-searches" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "3BR Flats in Lekki under 2M",
+    "description": "Affordable 3-bedroom apartments in Lekki area",
+    "filters": {
+      "listingType": "RENT",
+      "bedrooms": 3,
+      "maxPrice": 2000000,
+      "area": "lekki",
+      "state": "Lagos"
+    },
+    "notifyEmail": true,
+    "notifyInApp": true
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/saved-searches',
+  {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: '3BR Flats in Lekki under 2M',
+      description: 'Affordable 3-bedroom apartments in Lekki area',
+      filters: {
+        listingType: 'RENT',
+        bedrooms: 3,
+        maxPrice: 2000000,
+        area: 'lekki',
+        state: 'Lagos'
+      },
+      notifyEmail: true,
+      notifyInApp: true
+    })
+  }
+);
+
+const data = await response.json();
+console.log('Saved search created:', data.data.id);
+```
+</CodeGroup>
+
+#### Example Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "clx5k2m4p000208l8h9j3n6v1",
+    "userId": "clx1a8b3c000008jz7d9e5f2g",
+    "name": "3BR Flats in Lekki under 2M",
+    "description": "Affordable 3-bedroom apartments in Lekki area",
+    "filters": {
+      "listingType": "RENT",
+      "bedrooms": 3,
+      "maxPrice": 2000000,
+      "area": "lekki",
+      "state": "Lagos"
+    },
+    "naturalQuery": null,
+    "isActive": true,
+    "lastCheckedAt": null,
+    "matchCount": 0,
+    "newSinceCheck": 0,
+    "notifyEmail": true,
+    "notifyInApp": true,
+    "createdAt": "2024-03-11T10:45:00.000Z",
+    "updatedAt": "2024-03-11T10:45:00.000Z"
+  },
+  "message": "Saved search created"
+}
+```
+
+---
+
+## List Saved Searches
+
+### GET /api/saved-searches
+
+Get all saved searches for the authenticated user, ordered by creation date (newest first).
+
+#### Response
+
+<ResponseField name="success" type="boolean" required>
+  Whether the request succeeded
+</ResponseField>
+
+<ResponseField name="data" type="array" required>
+  Array of saved search objects with match counts
+  
+  <ResponseField name="_count" type="object">
+    Match statistics
+    
+    <ResponseField name="matches" type="integer">
+      Total number of matches for this search
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://realtors-practice-new-api.onrender.com/api/saved-searches" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/saved-searches',
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  }
+);
+
+const data = await response.json();
+console.log(`You have ${data.data.length} saved searches`);
+```
+</CodeGroup>
+
+---
+
+## Update Saved Search
+
+### PUT /api/saved-searches/:id
+
+Update an existing saved search. Only the owner can update their saved searches.
+
+#### Parameters
+
+<ParamField path="id" type="string" required>
+  Saved search CUID
+</ParamField>
+
+#### Request Body
+
+All fields are optional. Only provided fields will be updated.
+
+<ParamField body="name" type="string">
+  Updated search name
+</ParamField>
+
+<ParamField body="description" type="string">
+  Updated description
+</ParamField>
+
+<ParamField body="filters" type="object">
+  Updated filter criteria (replaces entire filters object)
+</ParamField>
+
+<ParamField body="isActive" type="boolean">
+  Enable or disable automatic match checking
+</ParamField>
+
+<ParamField body="notifyEmail" type="boolean">
+  Update email notification preference
+</ParamField>
+
+<ParamField body="notifyInApp" type="boolean">
+  Update in-app notification preference
+</ParamField>
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL - Pause Search
+curl -X PUT "https://realtors-practice-new-api.onrender.com/api/saved-searches/clx5k2m4p000208l8h9j3n6v1" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "isActive": false
+  }'
+```
+
+```javascript JavaScript - Update Filters
+const response = await fetch(
+  `https://realtors-practice-new-api.onrender.com/api/saved-searches/${searchId}`,
+  {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      filters: {
+        listingType: 'RENT',
+        bedrooms: 4, // Changed from 3 to 4
+        maxPrice: 2500000, // Increased budget
+        area: 'lekki',
+        state: 'Lagos'
+      }
+    })
+  }
+);
+```
+</CodeGroup>
+
+---
+
+## Delete Saved Search
+
+### DELETE /api/saved-searches/:id
+
+Delete a saved search and all associated matches. Only the owner can delete their saved searches.
+
+#### Parameters
+
+<ParamField path="id" type="string" required>
+  Saved search CUID
+</ParamField>
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Saved search deleted"
+}
+```
+
+---
+
+## Get Matches
+
+### GET /api/saved-searches/:id/matches
+
+Retrieve properties that match a saved search, with optional filtering for unseen matches.
+
+#### Parameters
+
+<ParamField path="id" type="string" required>
+  Saved search CUID
+</ParamField>
+
+#### Query Parameters
+
+<ParamField query="limit" type="integer" default="20">
+  Number of matches to return
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Pagination offset
+</ParamField>
+
+<ParamField query="unseenOnly" type="boolean" default="false">
+  Only return matches that haven't been marked as seen
+</ParamField>
+
+#### Response
+
+<ResponseField name="success" type="boolean" required>
+  Whether the request succeeded
+</ResponseField>
+
+<ResponseField name="data" type="array" required>
+  Paginated array of match objects
+  
+  <ResponseField name="id" type="string">
+    Match record CUID
+  </ResponseField>
+  
+  <ResponseField name="matchedAt" type="string">
+    ISO 8601 timestamp when match was created
+  </ResponseField>
+  
+  <ResponseField name="seen" type="boolean">
+    Whether user has viewed this match
+  </ResponseField>
+  
+  <ResponseField name="property" type="object">
+    Property summary object (selected fields only)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination metadata
+  
+  <ResponseField name="total" type="integer">
+    Total number of matches
+  </ResponseField>
+  
+  <ResponseField name="page" type="integer">
+    Current page number (1-indexed)
+  </ResponseField>
+  
+  <ResponseField name="limit" type="integer">
+    Results per page
+  </ResponseField>
+</ResponseField>
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL - Unseen Only
+curl -X GET "https://realtors-practice-new-api.onrender.com/api/saved-searches/clx5k2m4p000208l8h9j3n6v1/matches?unseenOnly=true&limit=10" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```javascript JavaScript
+const response = await fetch(
+  `https://realtors-practice-new-api.onrender.com/api/saved-searches/${searchId}/matches?` +
+  new URLSearchParams({ unseenOnly: 'true', limit: '10' }),
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  }
+);
+
+const data = await response.json();
+console.log(`${data.pagination.total} new matches`);
+```
+</CodeGroup>
+
+#### Example Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "clx5m7n8q000308l9k2p4r6s2",
+      "savedSearchId": "clx5k2m4p000208l8h9j3n6v1",
+      "propertyId": "clx4j8k2l000008l6g5h9e2r3",
+      "matchedAt": "2024-03-11T12:30:00.000Z",
+      "seen": false,
+      "property": {
+        "id": "clx4j8k2l000008l6g5h9e2r3",
+        "title": "Luxury 3 Bedroom Flat with Pool",
+        "price": 1800000,
+        "listingType": "RENT",
+        "category": "RESIDENTIAL",
+        "area": "Lekki Phase 1",
+        "state": "Lagos",
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "images": [
+          "https://cdn.example.com/property1-1.jpg"
+        ],
+        "qualityScore": 89.5,
+        "createdAt": "2024-03-10T08:30:00.000Z"
+      }
+    }
+  ],
+  "pagination": {
+    "total": 5,
+    "page": 1,
+    "limit": 10
+  }
+}
+```
+
+---
+
+## Mark Matches as Seen
+
+### PATCH /api/saved-searches/:id/matches/seen
+
+Mark all unseen matches for a saved search as seen. Used after user views the match list.
+
+#### Parameters
+
+<ParamField path="id" type="string" required>
+  Saved search CUID
+</ParamField>
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "Matches marked as seen"
+}
+```
+
+#### Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PATCH "https://realtors-practice-new-api.onrender.com/api/saved-searches/clx5k2m4p000208l8h9j3n6v1/matches/seen" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+```javascript JavaScript
+await fetch(
+  `https://realtors-practice-new-api.onrender.com/api/saved-searches/${searchId}/matches/seen`,
+  {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  }
+);
+```
+</CodeGroup>
+
+---
+
+## Background Match Checking
+
+The system runs a cron job (via `SavedSearchService.checkAllActive()`) that:
+
+1. Queries all active saved searches
+2. For each search, queries the database for properties matching the filter criteria
+3. Only considers properties created/updated since `lastCheckedAt`
+4. Creates `SavedSearchMatch` records for new matches (skips duplicates)
+5. Updates `matchCount` and `newSinceCheck` counters
+6. Triggers notifications based on `notifyEmail` and `notifyInApp` preferences
+
+**Match checking logic:**
+- Exact match on: `listingType`, `category`, `state`, `bedrooms`
+- Range match on: `minPrice` / `maxPrice`
+- Case-insensitive partial match on: `area`, `propertyType`
+- Array contains on: `features` (all specified features must be present)
+
+### Notification Types
+
+- **In-app:** Creates `Notification` record with type `NEW_MATCH`
+- **Email:** Sends email digest of new matches (implementation pending)
+
+---
+
+## Error Responses
+
+<CodeGroup>
+```json 401 - Unauthorized
+{
+  "success": false,
+  "error": "Unauthorized"
+}
+```
+
+```json 404 - Not Found
+{
+  "success": false,
+  "error": "Saved search not found"
+}
+```
+
+```json 400 - Validation Error
+{
+  "success": false,
+  "error": "Invalid input"
+}
+```
+</CodeGroup>
+
+---
+
+## Notes
+
+- Maximum 100 matches returned per `checkMatches()` run to prevent runaway queries
+- Saved searches are soft-deleted when user account is deleted (cascade)
+- All match records are deleted when a saved search is deleted
+- `lastCheckedAt` timestamp is updated even when no new matches are found
+- The `newSinceCheck` counter resets on each check cycle

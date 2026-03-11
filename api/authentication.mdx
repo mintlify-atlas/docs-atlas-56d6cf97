@@ -1,0 +1,316 @@
+---
+title: "Authentication"
+description: "Authenticate API requests using Supabase JWT tokens"
+---
+
+## Overview
+
+Realtors' Practice uses **Supabase** for authentication. All API requests must include a valid JWT access token in the `Authorization` header.
+
+## Authentication Flow
+
+<Steps>
+  <Step title="User signs up or logs in">
+    Users authenticate via Supabase Auth (email/password, OAuth providers, magic links)
+  </Step>
+  <Step title="Supabase returns JWT token">
+    Upon successful authentication, Supabase issues an access token and refresh token
+  </Step>
+  <Step title="Include token in API requests">
+    Send the access token in the `Authorization` header with each API request
+  </Step>
+  <Step title="API validates token">
+    The backend validates the JWT using Supabase Admin SDK and creates/fetches the user record
+  </Step>
+</Steps>
+
+## Getting an Access Token
+
+### Sign Up
+
+Create a new user account:
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://YOUR_SUPABASE_URL/auth/v1/signup" \
+  -H "apikey: YOUR_SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "secure_password"
+  }'
+```
+
+```javascript JavaScript
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+const { data, error } = await supabase.auth.signUp({
+  email: 'user@example.com',
+  password: 'secure_password'
+});
+
+const accessToken = data.session?.access_token;
+```
+
+```python Python
+from supabase import create_client
+
+supabase = create_client(
+    os.environ['SUPABASE_URL'],
+    os.environ['SUPABASE_ANON_KEY']
+)
+
+response = supabase.auth.sign_up({
+    'email': 'user@example.com',
+    'password': 'secure_password'
+})
+
+access_token = response.session.access_token
+```
+</CodeGroup>
+
+### Sign In
+
+Authenticate an existing user:
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://YOUR_SUPABASE_URL/auth/v1/token?grant_type=password" \
+  -H "apikey: YOUR_SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "secure_password"
+  }'
+```
+
+```javascript JavaScript
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'secure_password'
+});
+
+const accessToken = data.session?.access_token;
+const refreshToken = data.session?.refresh_token;
+```
+
+```python Python
+response = supabase.auth.sign_in_with_password({
+    'email': 'user@example.com',
+    'password': 'secure_password'
+})
+
+access_token = response.session.access_token
+refresh_token = response.session.refresh_token
+```
+</CodeGroup>
+
+## Making Authenticated Requests
+
+Include the access token in the `Authorization` header:
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://realtors-practice-new-api.onrender.com/api/properties" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json"
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://realtors-practice-new-api.onrender.com/api/properties',
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    }
+  }
+);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://realtors-practice-new-api.onrender.com/api/properties',
+    headers={
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json'
+    }
+)
+```
+</CodeGroup>
+
+## Token Refresh
+
+Access tokens expire after 1 hour. Use the refresh token to obtain a new access token:
+
+<CodeGroup>
+```javascript JavaScript
+const { data, error } = await supabase.auth.refreshSession({
+  refresh_token: refreshToken
+});
+
+const newAccessToken = data.session?.access_token;
+```
+
+```python Python
+response = supabase.auth.refresh_session(refresh_token)
+new_access_token = response.session.access_token
+```
+</CodeGroup>
+
+<Tip>
+  The Supabase client SDK automatically handles token refresh. In frontend applications, use `supabase.auth.getSession()` to get the current valid session.
+</Tip>
+
+## User Roles
+
+Realtors' Practice implements role-based access control (RBAC):
+
+| Role | Permissions |
+|------|-------------|
+| **ADMIN** | Full platform access, user management, site configuration |
+| **PENDING_ADMIN** | Awaiting admin approval (read-only access) |
+| **EDITOR** | Create and modify properties, run scrape jobs |
+| **VIEWER** | Read-only access to properties and search |
+| **API_USER** | Programmatic API access only |
+
+<Note>
+  The first user with email `wedigcreativity@gmail.com` is automatically assigned the ADMIN role. All other new users default to VIEWER.
+</Note>
+
+### Role-Based Endpoint Access
+
+Endpoints enforce role requirements:
+
+- **Public**: Health check endpoints
+- **Viewer+**: GET /api/properties, POST /api/search
+- **Editor+**: POST /api/properties, PATCH /api/properties/:id
+- **Admin only**: DELETE /api/properties/:id, POST /api/sites
+
+Attempting to access an endpoint without sufficient permissions returns:
+
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "message": "You do not have permission to perform this action"
+}
+```
+
+## Service-to-Service Authentication
+
+For internal service communication (e.g., scraper → API callbacks), use the `X-Internal-Key` header:
+
+```bash
+X-Internal-Key: YOUR_INTERNAL_SECRET_KEY
+```
+
+This bypasses Supabase JWT validation and is used exclusively for trusted service-to-service calls.
+
+<Warning>
+  Never expose the internal key in client-side code or public repositories. Store it securely as an environment variable.
+</Warning>
+
+## Authentication Errors
+
+### 401 Unauthorized
+
+Returned when the token is missing, invalid, or expired:
+
+```json
+{
+  "success": false,
+  "error": "Invalid or expired token"
+}
+```
+
+**Solutions:**
+- Verify the token is included in the `Authorization` header
+- Check the token format: `Bearer <token>`
+- Refresh the token if expired
+- Re-authenticate the user
+
+### 403 Forbidden
+
+Returned when the user lacks required permissions:
+
+```json
+{
+  "success": false,
+  "error": "Forbidden",
+  "message": "Admin role required"
+}
+```
+
+**Solutions:**
+- Verify your user role with `GET /api/users/me`
+- Contact an admin to upgrade your role
+- Use an endpoint appropriate for your role level
+
+## Implementation Example
+
+Complete authentication flow in a Next.js app:
+
+```typescript app/lib/api.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export async function apiRequest(endpoint: string, options: RequestInit = {}) {
+  // Get current session
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  // Make API request with token
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
+    {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    }
+  );
+
+  return response.json();
+}
+
+// Usage
+const properties = await apiRequest('/api/properties?limit=10');
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Profile" icon="user" href="/api/user/profile">
+    Get and update user profile information
+  </Card>
+  <Card title="Properties API" icon="house" href="/api/properties/list">
+    Start fetching properties
+  </Card>
+  <Card title="Authentication Guide" icon="book" href="/guides/authentication">
+    Read the full authentication user guide
+  </Card>
+  <Card title="API Overview" icon="code" href="/api/overview">
+    Back to API overview
+  </Card>
+</CardGroup>
